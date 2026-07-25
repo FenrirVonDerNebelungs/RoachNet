@@ -31,7 +31,7 @@ public:
 																				the original offset of the node from the center*/
 	void release();
 
-	unsigned char root(Img* baseImg, s_HexEye& heye);/*this transfers the coord calculated an put in the refEye at init into the s_HexEye
+	unsigned char root(Img* baseImg, s_HexEye& heye);/*this transfers the coord calculated and put in the refEye at init into the s_HexEye
 													   and checks that the image has the correct dimensions to match what was initialized
 													   heye must be spawned by genHexEye*/
 	unsigned char run(Img* baseImg, s_HexEye& hexe); /*this requires the heye to already be rooted

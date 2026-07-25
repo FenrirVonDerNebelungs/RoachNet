@@ -1,20 +1,100 @@
 #include "RenderBase.h"
 
-unsigned char RenderBase::init(bool do_grid_overlay, float grid_line_width) {
+
+unsigned char n_RenderBase::setPlateIJ_toXY(s_HexPlate* plate) {
+	for (long ii = 0; ii < plate->N; ii++) {
+		s_Hex* cur_hex = plate->get(ii);
+		long i = Math::ftol(cur_hex->x);
+		long j = Math::ftol(cur_hex->y);
+		cur_hex->i = i;
+		cur_hex->j = j;
+	}
+	return ECODE_OK;
+}
+unsigned char n_RenderBase::setPlate_hex_o_toRGB(s_HexPlate* plate, s_rgb& col) {
+	float rgbf_col[] = {(float)col.r, (float)col.g, (float)col.b};
+	for (long ii = 0; ii < plate->N; ii++) {
+		s_Hex* cur_hex = plate->get(ii);
+		float cur_o = cur_hex->o;
+		for (int i_col = 0; i_col < 3; i_col++) {
+			cur_hex->rgb[i_col] = cur_o * rgbf_col[i_col];
+		}
+	}
+	return ECODE_OK;
+}
+
+RenderBase::RenderBase() : m_flag_rgb_unit_scaled(false), m_flag_doGridOverlay(false), m_grid_line_width(0.f), m_R(0.f), m_RS(0.f), m_hex_mask(NULL), m_hex_grid_mask(NULL), m_half_hex_masks(NULL) {
+	utilStruct::zeroRGB(m_grid_col);
+	for (int i = 0; i < 6; i++)
+		utilStruct::zero2pt(m_U[i]);
+	utilStruct::zero2pt_i(m_hex_mask_center);
+}
+RenderBase::~RenderBase() {
+	;
+}
+unsigned char RenderBase::init(float r, bool rgb_unit_scaled, bool do_grid_overlay, float grid_line_width) {
 	if (m_hex_mask != NULL || m_hex_grid_mask != NULL)
 		return ECODE_FAIL;
+	m_flag_rgb_unit_scaled = rgb_unit_scaled;
 	m_flag_doGridOverlay = do_grid_overlay;
 	m_grid_line_width = grid_line_width;
-	m_grid_col.r = 0xff;
-	m_grid_col.g = 0xff;
-	m_grid_col.b = 0xff;
+	m_grid_col.r = 0x30;
+	m_grid_col.g = 0x30;
+	m_grid_col.b = 0x00;
 	m_hex_mask = new Img;
 	m_hex_grid_mask = new Img;
-	m_hex_mask_center.x0 = 0.f;
-	m_hex_mask_center.x1 = 0.f;
+	m_hex_mask_center.x0 = 0L;
+	m_hex_mask_center.x1 = 0L;
+	m_half_hex_masks = new Img * [6];
+	for (int i_web = 0; i_web < 6; i_web++)
+		m_half_hex_masks[i_web] = new Img;
+	s_HexPlate s_dummy_hplate;
+	s_dummy_hplate.init(3);
+	for (int i_web = 0; i_web < 6; i_web++)
+		m_U[i_web] = s_dummy_hplate.hexU[i_web];
+	s_dummy_hplate.release();
+	m_R = r;
+	m_RS = sqrtf(3.f) / 2.f;
+	m_RS *= m_R;
+	if(Err(InitMask_for_hexes(m_U, m_R, m_RS)))
+		return ECODE_FAIL;
+	if(Err(InitHalfMasks_for_hexes(m_U, m_R, m_RS)))
+		return ECODE_FAIL;
+	return ECODE_OK;
+}
+unsigned char RenderBase::resetR(float r) {
+	if (m_hex_mask == NULL || m_hex_grid_mask == NULL || m_half_hex_masks == NULL)
+		return ECODE_FAIL;
+	for (int i_web = 0; i_web < 6; i_web++) {
+		if (m_half_hex_masks[i_web] == NULL)
+			return ECODE_FAIL;
+	}
+	m_R = r;
+	m_RS = sqrtf(3.f) / 2.f;
+	m_RS *= m_R;
+	m_hex_mask->release();
+	m_hex_grid_mask->release();
+	for (int i_web = 0; i_web < 6; i_web++)
+		m_half_hex_masks[i_web]->release();
+	if (Err(InitMask_for_hexes(m_U, m_R, m_RS)))
+		return ECODE_FAIL;
+	if (Err(InitHalfMasks_for_hexes(m_U, m_R, m_RS)))
+		return ECODE_FAIL;
+
 	return ECODE_OK;
 }
 void RenderBase::release() {
+	if (m_half_hex_masks != NULL) {
+		for (int i_web = 0; i_web < 6; i_web++) {
+			if (m_half_hex_masks[i_web] != NULL) {
+				m_half_hex_masks[i_web]->release();
+				delete m_half_hex_masks[i_web];
+			}
+			m_half_hex_masks[i_web] = NULL;
+		}
+		delete[] m_half_hex_masks;
+	}
+	m_half_hex_masks = NULL;
 	if (m_hex_grid_mask != NULL) {
 		m_hex_grid_mask->release();
 		delete m_hex_grid_mask;
@@ -26,7 +106,7 @@ void RenderBase::release() {
 	}
 	m_hex_mask = NULL;
 }
-unsigned char RenderBase::spawnHexPlateImg(s_HexBasePlate* plt, Img* iimg) {
+unsigned char RenderBase::spawnHexPlateImg(s_HexPlate* plt, Img* iimg) {
 	if (plt == NULL || iimg == NULL)
 		return ECODE_FAIL;
 	if (IsImgInit(iimg)) {
@@ -35,12 +115,36 @@ unsigned char RenderBase::spawnHexPlateImg(s_HexBasePlate* plt, Img* iimg) {
 	}else
 		if (Err(InitImg_for_HexPlate((s_HexPlate*)plt, iimg)))
 			return ECODE_FAIL;
-	return RenderHexPlate_to_Img((s_HexPlate*)plt, iimg);
+	s_2pt_i img_offset = { 0L, 0L };
+	return RenderHexPlate_to_Img((s_HexPlate*)plt, img_offset, iimg);
 }
 void RenderBase::despawnHexPlateImg(Img* iimg) {
 	if (iimg == NULL)
 		return;
 	iimg->release();
+}
+unsigned char RenderBase::RenderHex(s_Hex* hex, s_2pt_i& center, Img* iimg, bool doGridOverlay, bool doFill, int half_hex_web_i) {
+	unsigned char ercode = ECODE_OK;
+	if (hex == NULL)
+		return ECODE_FAIL;
+	s_rgb plate_col;
+	float scaled_rgb[3];
+	if (m_flag_rgb_unit_scaled)
+		for (int i_col = 0; i_col < 3; i_col++)
+			scaled_rgb[i_col] = hex->rgb[i_col] * RENDERBASE_pix_max;
+	else
+		for (int i_col = 0; i_col < 3; i_col++)
+			scaled_rgb[i_col] = hex->rgb[i_col];
+	imgMath::FloatsToRGB(scaled_rgb, plate_col);
+	s_2pt_i ij = { hex->i + center.x0, hex->j + center.x1 };
+	if (doFill)
+		ercode |= iimg->PrintMaskedImg(ij.x0, ij.x1, *m_hex_mask, plate_col);
+	if (doGridOverlay)
+		ercode |= iimg->PrintMaskedImg(ij.x0, ij.x1, *m_hex_grid_mask, plate_col);
+	if (half_hex_web_i >= 0 && half_hex_web_i < 6) {
+		ercode |= iimg->PrintMaskedImg(ij.x0, ij.x1, *(m_half_hex_masks[half_hex_web_i]), plate_col);
+	}
+	return ercode;
 }
 bool RenderBase::IsImgInit(Img* iimg) {
 	if (iimg == NULL)
@@ -59,37 +163,38 @@ bool RenderBase::IsImgDimMatch(s_HexPlate* plt, Img* iimg) {
 		return false;
 	return true;
 }
-unsigned char RenderBase::InitMask_for_hexes_of_HexPlate(s_HexPlate* plt) {
-	if (Err(InitMask_for_hex_dim(plt->Rhex, plt->RShex)))
-		return ECODE_FAIL;
-	s_rgb rgb_filled = { 0xff, 0xff, 0xff };
-	s_rgb rgb_empty = { 0x00, 0x00, 0x00 };
-	unsigned char errok = FillMask_for_U_of_HexPlate(plt, plt->RShex, rgb_filled, m_hex_mask);
-	errok |= FillMask_for_U_of_HexPlate(plt, plt->RShex, rgb_filled, m_hex_grid_mask);
-	float inner_RS = plt->RShex - m_grid_line_width;
-	if (inner_RS <= 0.f)
-		inner_RS = plt->RShex;
-	errok |= FillMask_for_U_of_HexPlate(plt, inner_RS, rgb_empty, m_hex_grid_mask);
-	return errok;
-}
 unsigned char RenderBase::InitImg_for_HexPlate(s_HexPlate* plt, Img* iimg) {
-	return iimg->init(plt->width, plt->height, 3L);
+	if(Err( iimg->init(plt->width, plt->height, 3L))  )
+		return ECODE_FAIL;
+	iimg->clearToChar(RENDERBASE_rgb_empty.r);
+	return ECODE_OK;
 }
-unsigned char RenderBase::RenderHexPlate_to_Img(s_HexPlate* plt, Img* iimg) {
+unsigned char RenderBase::RenderHexPlate_to_Img(s_HexPlate* plt, s_2pt_i& center, Img* iimg) {
 	if (iimg == NULL)
 		return ECODE_FAIL;
 	unsigned char ercode = ECODE_OK;
 	for (long hex_i = 0; hex_i < plt->N; hex_i++) {
 		s_Hex* plate_hex = plt->get(hex_i);
-		s_rgb plate_col = { plate_hex->rgb[0], plate_hex->rgb[1], plate_hex->rgb[2] };
-		ercode |= iimg->PrintMaskedImg(plate_hex->i, plate_hex->j, *m_hex_mask, plate_col);
-		if(m_flag_doGridOverlay)
-			ercode |= iimg->PrintMaskedImg(plate_hex->i, plate_hex->j, *m_hex_grid_mask, plate_col);
+		ercode=RenderHex(plate_hex, center, iimg, m_flag_doGridOverlay);
 	}
 	if (IsErrFail(ercode))
 		return ECODE_FAIL;
 	return ECODE_OK;
 }
+unsigned char RenderBase::RenderHalfHexPlate_to_Img(int half_hex_web_i, s_HexPlate* plt, s_2pt_i& center, Img* iimg) {
+	if (iimg == NULL)
+		return ECODE_FAIL;
+	unsigned char ercode = ECODE_OK;
+	for (long hex_i = 0; hex_i < plt->N; hex_i++) {
+		s_Hex* plate_hex = plt->get(hex_i);
+		ercode = RenderHex(plate_hex, center, iimg, m_flag_doGridOverlay, false, half_hex_web_i);
+	}
+	if (IsErrFail(ercode))
+		return ECODE_FAIL;
+	return ECODE_OK;
+}
+
+
 unsigned char RenderBase::InitMask_for_hex_dim(float r, float rs) {
 	if (m_hex_mask == NULL || m_hex_grid_mask==NULL)
 		return ECODE_FAIL;
@@ -97,60 +202,91 @@ unsigned char RenderBase::InitMask_for_hex_dim(float r, float rs) {
 		m_hex_mask->release();
 	if (m_hex_grid_mask->getWidth() >= 1 || m_hex_grid_mask->getHeight() >= 1)
 		m_hex_grid_mask->release();
-	long longest_possible_dim = (long)ceil(r);
-	longest_possible_dim += longest_possible_dim;
+	long longest_possible_rad = (long)ceil(r);
+	long longest_possible_dim = 2*longest_possible_rad;
 	longest_possible_dim += 2L;
 	if(Err(m_hex_mask->init(longest_possible_dim, longest_possible_dim, 3L)))
 		return ECODE_FAIL;
 	if (Err(m_hex_grid_mask->init(longest_possible_dim, longest_possible_dim, 3L)))
 		return ECODE_FAIL;
-	m_hex_mask_center.x0 = longest_possible_dim + 1L;
-	m_hex_mask_center.x1 = longest_possible_dim + 1L;
+	m_hex_mask_center.x0 = longest_possible_rad;/*0 is start not 1 so don't  need to add 1*/
+	m_hex_mask_center.x1 = longest_possible_rad;
 	m_hex_mask->clearToChar(0x00);
 	m_hex_grid_mask->clearToChar(0x00);
 	return ECODE_OK;
 }
-unsigned char RenderBase::FillMask_for_U_of_HexPlate(s_HexPlate* plt, float RShex, s_rgb& rgb_filled, Img* hex_mask) {
-	for (long i_row = 0; hex_mask->getHeight(); i_row++) {
-		for (long i_col = 0; hex_mask->getWidth(); i_col++) {
+
+
+
+unsigned char RenderBase::InitMask_for_hexes(s_2pt hexU[], float Rhex, float RShex) {
+	if (Err(InitMask_for_hex_dim(Rhex, RShex)))
+		return ECODE_FAIL;
+	s_rgb rgb_filled = { 0xff, 0xff, 0xff };
+	s_rgb rgb_empty = { 0x00, 0x00, 0x00 };
+	unsigned char errok = FillMask_for_U(hexU, RShex, rgb_filled, m_hex_mask);
+	errok |= FillMask_for_U(hexU, RShex, rgb_filled, m_hex_grid_mask);
+	float inner_RS = RShex - m_grid_line_width;
+	if (inner_RS <= 0.f)
+		inner_RS = RShex;
+	errok |= FillMask_for_U(hexU, inner_RS, rgb_empty, m_hex_grid_mask);
+	return errok;
+}
+unsigned char RenderBase::InitHalfMasks_for_hexes(s_2pt hexU[], float Rhex, float RShex) {
+	for (int i_web = 0; i_web < 6; i_web++)
+		if (Err(InitHalfMask_for_hex(hexU, i_web, m_half_hex_masks[i_web])))
+			return ECODE_FAIL;
+	return ECODE_OK;
+}
+unsigned char RenderBase::FillMask_for_U(s_2pt hexU[], float RShex, s_rgb& rgb_filled, Img* hex_mask) {
+	for (long i_row = 0; i_row<hex_mask->getHeight(); i_row++) {
+		for (long i_col = 0; i_col<hex_mask->getWidth(); i_col++) {
 			long cur_index = i_row * hex_mask->getWidth() + i_col;
 			s_2pt cur_loc = { (float)i_col, (float)i_row };
 			s_2pt hex_mask_center = { (float)m_hex_mask_center.x0, (float)m_hex_mask_center.x1 };
 			s_2pt pt = vecMath::v12(hex_mask_center, cur_loc);
 			/*try rotating around the U's defined by the plate*/
 			bool is_found_in_hex_slice = false;
-			for (int u_i = 0; u_i < 5; u_i++) {
-				is_found_in_hex_slice = do_FillBetweenUs(pt, plt->hexU[u_i], plt->hexU[u_i + 1], RShex);
+			for (int u_i = 0; u_i < 6; u_i++) {
+				int u_i_prev = Math::loop(u_i - 1, 6);
+				int u_i_next = Math::loop(u_i + 1, 6);
+				is_found_in_hex_slice = do_FillHexSeg(pt, hexU[u_i_prev], hexU[u_i], hexU[u_i_next], RShex);
 				if (is_found_in_hex_slice)
 					break;
 			}
-			if (!is_found_in_hex_slice)
-				is_found_in_hex_slice = do_FillBetweenUs(pt, plt->hexU[5], plt->hexU[0], RShex);
 			if (is_found_in_hex_slice)
 				hex_mask->SetRGB(i_col, i_row, rgb_filled);
 		}
 	}
 	return ECODE_OK;
 }
-bool RenderBase::do_FillBetweenUs(const s_2pt& pt, const s_2pt& U0, const s_2pt& U1, float rs) {
-	/*find bisector*/
-	s_2pt bi_long = vecMath::add(U0, U1);
-	float len_bi = vecMath::len(bi_long);
-	if (len_bi <= 0.f)
+bool RenderBase::do_FillHexSeg(const s_2pt& pt, const s_2pt& U_prev, const s_2pt& U, const s_2pt& U_next, float rs) {
+	float dot_p = vecMath::dot(U_prev, pt);
+	float dot_u = vecMath::dot(U, pt);
+	float dot_n = vecMath::dot(U_next, pt);
+	if (dot_u < 0.f)
 		return false;
-	bi_long.x0 /= len_bi;
-	bi_long.x1 /= len_bi;
-	float cos_proj = vecMath::dot(bi_long, pt);
-	if (cos_proj<0.f || cos_proj>=(rs+1.f))
+	if (dot_u < dot_p || dot_u < dot_n)
 		return false;
-	float pt_len = vecMath::len(pt);
-	if (pt_len < 0.f)
-		return false;
-	if (pt_len == 0.f)
-		return true;
-	float cos_norm = cos_proj/pt_len;
-	float half_ang_cos = sqrtf(3.f) / 2.f;
-	if (cos_norm < half_ang_cos)
+	if (dot_u > rs)
 		return false;
 	return true;
+}
+unsigned char RenderBase::InitHalfMask_for_hex(s_2pt hexU[], int i_web, Img* halfMask) {
+	if (halfMask == NULL)
+		return ECODE_FAIL;
+	s_2pt web_U = hexU[i_web];
+	if (halfMask->getWidth() > 1 || halfMask->getHeight() > 1)
+		halfMask->release();
+	halfMask->init(*m_hex_mask);
+	for (long i_row = 0; i_row<m_hex_mask->getHeight(); i_row++) {
+		for (long i_col = 0; i_col<m_hex_mask->getWidth(); i_col++) {
+			long cur_index = i_row * m_hex_mask->getWidth() + i_col;
+			s_2pt cur_loc = { (float)i_col, (float)i_row };
+			s_2pt hex_mask_center = { (float)m_hex_mask_center.x0, (float)m_hex_mask_center.x1 };
+			s_2pt pt = vecMath::v12(hex_mask_center, cur_loc);
+			if (vecMath::dot(web_U, pt) < 0.f)
+				halfMask->SetRGB(i_col, i_row, RENDERBASE_rgb_empty);
+		}
+	}
+	return ECODE_OK;
 }

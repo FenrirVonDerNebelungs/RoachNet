@@ -12,11 +12,13 @@ public:
 	~Img();
 
 	virtual unsigned char init(const Img& other);
-	virtual unsigned char init(const unsigned char img[], long width, long height, long colorMode = 4);
+	virtual unsigned char init(const unsigned char img[], long width, long height, long colorMode = 4);/*owns the image*/
 	unsigned char initNoOwn(unsigned char img[], long width, long height, long colorMode = 4);
 	virtual unsigned char init(long width, long height, long colorMode = 4);
 	void   clearToChar(unsigned char cval);
 	void release();
+
+	inline bool sameKind(const Img& other) { return (this->m_width == other.getWidth() && this->m_height == other.getHeight() && this->getColorMode() == other.getColorMode()); }
 
 	s_rgba GetRGBA(long x_i, long y_i) const;
 	s_rgb  GetRGB(long x_i, long y_i) const;
@@ -43,7 +45,9 @@ public:
 	unsigned char PrintMaskedImg(long x_i, long y_j, const Img& pImg, const s_rgb& rgb);
 	unsigned char PrintSquare(long x_i, long y_j, int size, s_rgba& rgba);
 	unsigned char DrawLine(s_2pt_i& pt0, s_2pt_i& pt1, s_rgb& rgba);
+	unsigned char DrawLineGrad(s_2pt_i& pt0, s_2pt_i& pt1, s_rgb& rgb1, s_rgb& rgb2);
 
+	inline s_2pt_i getCenter() { s_2pt_i center = { m_width / 2L, m_height / 2L }; return center; }
 	inline long getWidth() const { return m_width; }
 	inline long getHeight() const { return m_height; }
 	inline unsigned char* getImg() { return m_img; }

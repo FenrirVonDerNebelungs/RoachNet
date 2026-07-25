@@ -20,7 +20,7 @@ unsigned char HexImg::init(Img* img,
 	m_p->initRs(Rhex);
 	m_nWH = genMeshLoc(m_p->Rhex, m_p->RShex, m_p->Shex);
 	long hex_size = (long)ceilf(2.f * m_nWH.x0 * m_nWH.x1);
-	m_p->init(hex_size);
+	((s_HexPlate*)m_p)->init(hex_size);
 	if(Err(genMesh()))
 		return ECODE_FAIL;
 	if (Err(genPlateRowStart()))
@@ -31,6 +31,7 @@ unsigned char HexImg::init(Img* img,
 	utilStruct::zero2pt(m_BR);
 	utilStruct::zero2pt_i(m_hexMaskBL_offset);
 	m_toppixHex = 0.f;
+	return ECODE_OK;
 }
 void HexImg::release() {
 	if (m_Convol != NULL) {
@@ -49,7 +50,6 @@ unsigned char HexImg::update(Img* img) {
 	if (img->getWidth() != m_img->getWidth() || img->getHeight() != m_img->getHeight())
 		return ECODE_ABORT;
 	m_img = img;
-	unsigned char err;
 	return run();
 }
 unsigned char HexImg::genMesh() {
@@ -116,7 +116,7 @@ unsigned char HexImg::run()
 #else
 unsigned char HexImg::run()
 {
-	for (int i = 0; i < m_nHex; i++) {
+	for (long i = 0; i < m_p->N; i++) {
 		m_Convol->convulToHex(i);
 	}
 	return ECODE_OK;

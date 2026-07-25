@@ -5,13 +5,22 @@
 #include "../Base/Base.h"
 #endif
 
-#define PARSETXT_MAXAR 150
+#define PARSETXT_MAXAR 1800
 #define PARSETXT_FILENUMEXTLEN 4
 using namespace std;
 
-struct s_datLine {
+/*struct s_datLine {
 	float v[PARSETXT_MAXAR];
 	int n;
+};*/
+class s_datLine {
+public:
+	s_datLine();
+	s_datLine(int i_maxar);
+	~s_datLine();
+	float* v;
+	int n;
+	int maxar;
 };
 namespace n_datLine {
 	void clear(s_datLine& dl);
@@ -46,9 +55,10 @@ protected:
 };
 
 namespace n_ParseTxt {
+	unsigned char intToFixedLenStr(int val, int target_len, string& strout);
 	inline unsigned char intToFileNameExt(int val, string& strout) {
 		return intToFixedLenStr(val, PARSETXT_FILENUMEXTLEN, strout);
 	}
-	unsigned char intToFixedLenStr(int val, int target_len, string& strout);
+	bool stripStringBeforeSuf(const std::string& sufstr, const std::string& instr, std::string& resstr);
 }
 #endif

@@ -1,8 +1,20 @@
 #include "ParseTxt.h"
 
+s_datLine::s_datLine():n(0), maxar(PARSETXT_MAXAR) {
+	v = new float[PARSETXT_MAXAR];
+}
+s_datLine::s_datLine(int i_maxar) :n(0) {
+	maxar = i_maxar;
+	v = new float[maxar];
+}
+s_datLine::~s_datLine() {
+	if (v != NULL)
+		delete[] v;
+}
+
 namespace n_datLine {
 	void clear(s_datLine& dl) {
-		for (int i = 0; i < PARSETXT_MAXAR; i++)
+		for (int i = 0; i < dl.maxar; i++)
 			dl.v[i] = 0.f;
 		dl.n = 0;
 	}	
@@ -37,7 +49,7 @@ int ParseTxt::readCSV(s_datLine dat[], int maxSize) {
 	ifstream ffile(m_inFile);
 	string line;
 	int lcnt = 0;
-	int arlen = 0;
+	int arlen = 1;
 	int lines_read = 0;
 	while (getline(ffile,line) && lcnt<maxSize && arlen>0) {
 		arlen = readFloatLine(line, dat[lcnt].v);
@@ -97,12 +109,12 @@ int ParseTxt::readFloatLine(const string& str, float* ar) {
 		size_t len = foundLoc - startLoc;
 		if (len <= 0)
 			break;
-		startLoc = foundLoc + 1;
 		string numStr = str.substr(startLoc, len);
 		ar[arLen] = stof(numStr);
 		arLen++;
 		if (arLen >= PARSETXT_MAXAR)
 			return -1;
+		startLoc = foundLoc + 1;
 		foundLoc = str.find(commaStr, startLoc);
 	};
 	return arLen;
@@ -110,7 +122,7 @@ int ParseTxt::readFloatLine(const string& str, float* ar) {
 
 unsigned char n_ParseTxt::intToFixedLenStr(int val, int target_len, string& strout) {
 	string convIntStr = to_string(val);/*should just convert to string without padding*/
-	int len_conv_str = convIntStr.length();
+	int len_conv_str = (int)convIntStr.length();
 	if (len_conv_str > target_len)
 		return ECODE_ABORT;
 	int added_padding_num = target_len - len_conv_str;
@@ -120,4 +132,11 @@ unsigned char n_ParseTxt::intToFixedLenStr(int val, int target_len, string& stro
 	}
 	strout += convIntStr;
 	return ECODE_OK;
+}
+bool n_ParseTxt::stripStringBeforeSuf(const std::string& sufstr, const std::string& instr, std::string& resstr) {
+	size_t sufstartpos = instr.find(sufstr);
+	if (sufstartpos == std::string::npos)
+		return false;
+	resstr = instr.substr(0, sufstartpos);
+	return true;
 }

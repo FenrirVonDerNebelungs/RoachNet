@@ -42,7 +42,7 @@ void NNet::release() {
 	m_r = 0.f;
 }
 
-unsigned char NNet::spawn(s_CNnets* nets) {
+unsigned char NNet::spawn(s_CNets* nets) {
 	if (nets == NULL)
 		return ECODE_ABORT;
 	unsigned char err = nets->init(m_N_nets);
@@ -65,7 +65,7 @@ unsigned char NNet::spawn(s_CNnets* nets) {
 		err=preSetWeights(nets);
 	return err;
 }
-void NNet::despawn(s_CNnets* nets) {
+void NNet::despawn(s_CNets* nets) {
 	if (nets == NULL)
 		return;
 	if (m_HexEyeGen == NULL || m_NetGen == NULL)
@@ -108,7 +108,7 @@ void NNet::setExDim(float rEx) {
 	float net_footprint_dim = sideEx + rEx;
 	m_footprint = net_footprint_dim;
 }
-unsigned char NNet::preSetWeights(s_CNnets* nets) {
+unsigned char NNet::preSetWeights(s_CNets* nets) {
 	if (nets == NULL)
 		return ECODE_ABORT;
 	for (int i = 0; i < nets->N; i++) {
@@ -175,13 +175,13 @@ unsigned char NNet::preSetWeightNet(s_Net* net, s_HexEye* eye) {
 	}
 	return ECODE_OK;
 }
-bool n_NNet::run(s_CNnets* nets, s_HexBasePlateLayer* platesIn, s_HexBasePlateLayer* platesOut, long plate_index) {
-	if (!rootNets(nets, platesIn, plate_index))
+bool n_NNet::run(s_CNets* nets, s_HexPlateLayer* platesIn, s_HexPlateLayer* platesOut, long plate_index) {
+	if (!(rootNets(nets, platesIn, plate_index)))
 		return false;
 	runRootedNets(nets);
 	/*the number of nets nets->N must be the same as the number of plates out*/
 	for (int net_i = 0; net_i < nets->N; net_i++) {
-		s_HexBasePlate* plateOut = platesOut->get(net_i);
+		s_HexPlate* plateOut = platesOut->get(net_i);
 		s_Hex* hexOut = plateOut->get(plate_index);
 		/*now extract the results of running the nets*/
 		s_Net* net = nets->net[net_i];
@@ -193,9 +193,9 @@ bool n_NNet::run(s_CNnets* nets, s_HexBasePlateLayer* platesIn, s_HexBasePlateLa
 	}
 	return true;
 }
-bool n_NNet::rootNets(s_CNnets* nets, s_HexBasePlateLayer* platesIn, long plate_index) {
+bool n_NNet::rootNets(s_CNets* nets, s_HexPlateLayer* platesIn, long plate_index) {
 	s_HexEye* eye = nets->eye;
-	s_HexBasePlate* plateIn = platesIn->get(0);
+	s_HexPlate* plateIn = platesIn->get(0);
 	if ((n_HexEye::imgRoot(eye, plateIn, plate_index))!=ECODE_OK)
 		return false;
 	s_HexPlate* eyeBase = eye->getBottom();

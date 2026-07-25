@@ -1,5 +1,10 @@
 #include "HexEyeImg.h"
-
+HexEyeImg::HexEyeImg() :m_genHexEye(NULL), m_imgWidth(0), m_imgHeight(0), m_Convol(NULL), m_refHexEye(NULL) {
+	;
+}
+HexEyeImg::~HexEyeImg() {
+	;
+}
 unsigned char HexEyeImg::init(Img* baseImg, s_2pt& eye_center, HexEye* genHexEye,
 	float sigmaVsR,
 	float IMaskRVsR) {
@@ -12,6 +17,8 @@ unsigned char HexEyeImg::init(Img* baseImg, s_2pt& eye_center, HexEye* genHexEye
 	if (genHexEye == NULL)
 		return ECODE_FAIL;
 	m_genHexEye = genHexEye;
+	m_imgWidth = static_cast<float>(baseImg->getWidth());
+	m_imgHeight = static_cast<float>(baseImg->getHeight());
 	m_refHexEye = new s_HexEye;
 	if(Err(m_genHexEye->spawn(m_refHexEye)))
 		return ECODE_FAIL;
@@ -46,10 +53,12 @@ void HexEyeImg::release() {
 	m_genHexEye = NULL;
 	if (m_refHexEye != NULL)
 		delete m_refHexEye;
+	m_imgWidth = 0.f;
+	m_imgHeight = 0.f;
 }
 
 unsigned char HexEyeImg::root(Img* baseImg, s_HexEye& heye) {
-	if (baseImg->getWidth() != m_imgWidth || baseImg->getHeight() != m_imgHeight)
+	if (static_cast<float>(baseImg->getWidth()) != m_imgWidth || static_cast<float>(baseImg->getHeight()) != m_imgHeight)
 		return ECODE_ABORT;
 	if (m_refHexEye->N != heye.N)
 		return ECODE_ABORT;
@@ -74,7 +83,11 @@ unsigned char HexEyeImg::root(Img* baseImg, s_HexEye& heye) {
 	return ECODE_OK;
 }
 unsigned char HexEyeImg::run(Img* baseImg, s_HexEye& heye) {
-	return runSingleThread(baseImg, heye);
+	if (Err(runSingleThread(baseImg, heye)))
+		return ECODE_FAIL;
+	if (Err(n_HexEye::updateCol(&heye)))
+		return ECODE_FAIL;
+	return ECODE_OK;
 }
 
 unsigned char HexEyeImg::resetNodeToImgCoord(Img* baseImg, s_2pt& eye_center, s_Hex* hex_nd) {
@@ -109,7 +122,7 @@ unsigned char HexEyeImg::runSingleThread(Img* baseImg, s_HexEye& heye) {
 	n_HexEyeImg::fillStruct(*baseImg, *m_Convol, *eyeBase, kernVars);
 	for (long i = 0; i < kernVars.num_Hex; i++) {
 		kernVars.hex_index = i;
-		threadedConvol::convCellKernel(kernVars);/*if the indexes of the current hex (ij) are either less than 0 this just returns*/
+		n_Convol::convCellKernel(kernVars);/*if the indexes of the current hex (ij) are either less than 0 this just returns*/
 	}
 	return ECODE_OK;
 }

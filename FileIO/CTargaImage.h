@@ -51,6 +51,13 @@ struct tgaheader_t
 	unsigned char  imageDesc;
 };
 
+namespace n_tgaheader {
+	void headerToChararray(const tgaheader_t& th, char ar[]);
+	void chararrayToHeader(const char ar[], tgaheader_t& th);
+
+	void shortToChars(unsigned short s, char ar[]);
+	unsigned short charsToShort(const char ar[]);
+}
 
 class CTargaImage :public Base {
 public:
@@ -83,8 +90,10 @@ public:
 protected:
 	bool m_ImageDataIsOwned;
 
-	FILE* pStream_in;
-	FILE* pStream_out;
+	std::ifstream* pStream_in;
+	std::ofstream* pStream_out;
+	//FILE* pStream_in;
+	//FILE* pStream_out;
 
 	unsigned short m_xOrigin;
 	unsigned short m_yOrigin;

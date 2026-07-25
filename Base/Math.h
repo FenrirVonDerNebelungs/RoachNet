@@ -22,6 +22,11 @@ struct s_rgb {
 	unsigned char g;
 	unsigned char b;
 };
+struct s_rgb_f {
+	float r;
+	float g;
+	float b;
+};
 
 struct s_2pt_i {
 	long x0;
@@ -47,6 +52,7 @@ namespace n_gaussianInt {
 namespace utilStruct {
 	inline void zeroRGBA(s_rgba& rgba) { rgba.r = 0x00; rgba.g = 0x00; rgba.b = 0x00; rgba.a = 0x00; }
 	inline void zeroRGB(s_rgb& rgb) { rgb.r = 0x00; rgb.g = 0x00; rgb.b = 0x00; }
+	inline void zeroRGB_f(s_rgb_f& rgb) { rgb.r = 0.f; rgb.g = 0.f; rgb.b = 0.f; }
 	inline void zero2pt_i(s_2pt_i& spt) { spt.x0 = 0; spt.x1 = 0; }
 	inline void zero2pt(s_2pt& pt) { pt.x0 = 0.f; pt.x1 = 0.f; }
 	inline void copy2pt_i(s_2pt_i& ptcopy, const s_2pt_i& pt) { ptcopy.x0 = pt.x0; ptcopy.x1 = pt.x1; }
@@ -69,7 +75,7 @@ namespace Math {
 																		    and fills I with it, also fills X*/
 	bool  GaussianNumInt(s_gaussianInt& Int);/*runs the aboe from values in Int, the arrays have to have already been generated and of len N*/
 	/*random*/
-	void timeSeed() { std::srand(std::time(0)); }
+	void timeSeed();
 	float randAng(float startRad=0.f, float endRad=2.00001f*PI);/*returns a random angle between start and end, values are given in radians, requires start to end to be */
 	float randGausPt(const s_gaussianInt& gI);/*returns a point with the prob of a gaussian, where the integral of the gaussian is given
 				                         by I
@@ -78,8 +84,8 @@ namespace Math {
 										 onto the integrated prob of the gaussian */
 	s_2pt randGaus2D(const s_2pt& center, const s_gaussianInt& gI);/*returns a point using randGausPt for the radius */
 	float randGausJitterAng(const s_gaussianInt& gI,float center_ang);/*range around center angle is already set in gI, if point goes over range then starts wrapping*/
-
-
+	long ftol(float f);
+	float ltof(long l);
 }
 namespace arrMath {
 	/*puts value into array at i and moves array forward after the value*/
@@ -89,6 +95,7 @@ namespace arrMath {
 }
 namespace vecMath {
 	s_2pt add(const s_2pt& v1, const s_2pt& v2);
+	s_2pt_i add(const s_2pt_i& v1, const s_2pt_i& v2);
 	s_2pt add(const s_2pt& v1, const s_2pt& v2, const s_2pt& v3);
 	s_2pt v12(const s_2pt& v1, const s_2pt& v2);
 	Tup3 v12(const Tup3& v1, const Tup3& v2);
@@ -113,11 +120,15 @@ namespace imgMath {
 	s_rgb  convToRGB(float r, float g, float b);
 	s_rgb mulIntensity(const s_rgb& rgb, float intensity);
 	void IncRGB(s_rgb& rgb0, const s_rgb& rgb1);
+	s_rgb gradRGB(const s_rgb& rgb0, const s_rgb& rgb1, float relI = 0.f);
+	void limitRGB(s_rgb_f& rgb);/*limits each to a range between 0 an 255*/
 
 	s_2pt_i convToVint(const s_2pt& vec);
 	s_2pt convToVfloat(const s_2pt_i& vi);
 	Tup3 rgbToTup3(const s_rgb& rgb);
 	s_rgb tup3ToRgb(const Tup3& tup);
+	void RGBToFloats(const s_rgb& rgb_c, float rgb_f[]);
+	void FloatsToRGB(const float rgb_f[], s_rgb& rgb_c);/*does not automatically scale the float 1-> char 1 255 -> char 255*/
 
 	void drawPoint(long i, long j, const s_rgba& col, Img* canvas);
 	void drawLine(long i_start, long j_start, long i_end, long j_end, const s_rgba& col, float thickness, Img* canvas);

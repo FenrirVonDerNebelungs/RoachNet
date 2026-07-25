@@ -1,5 +1,48 @@
 #include "CTargaImage.h"
+using namespace std;
 
+void n_tgaheader::headerToChararray(const tgaheader_t& th, char ar[]) {
+	ar[0] = static_cast<char>(th.idLength);
+	ar[1] = static_cast<char>(th.colorMapType);
+	ar[2] = static_cast<char>(th.imageTypeCode);
+	for (int i = 0; i < 5; i++)
+		ar[3 + i] = static_cast<char>(th.colorMapSpec[i]);
+	shortToChars(th.xOrigin, &(ar[8]));
+	shortToChars(th.yOrigin, &(ar[10]));
+	shortToChars(th.width, &(ar[12]));
+	shortToChars(th.height, &(ar[14]));
+	ar[16] = static_cast<char>(th.bpp);
+	ar[17] = static_cast<char>(th.imageDesc);
+}
+void n_tgaheader::chararrayToHeader(const char ar[], tgaheader_t& th) {
+	th.idLength = static_cast<unsigned char>(ar[0]);
+	th.colorMapType = static_cast<unsigned char>(ar[1]);
+	th.imageTypeCode = static_cast<unsigned char>(ar[2]);
+	for (int i = 0; i < 5; i++)
+		th.colorMapSpec[i] = static_cast<unsigned char>(ar[3 + i]);
+	th.xOrigin = charsToShort(&(ar[8]));
+	th.yOrigin = charsToShort(&(ar[10]));
+	th.width = charsToShort(&(ar[12]));
+	th.height = charsToShort(&(ar[14]));
+	th.bpp = static_cast<unsigned char>(ar[16]);
+	th.imageDesc = static_cast<unsigned char>(ar[17]);
+}
+void n_tgaheader::shortToChars(unsigned short s, char ar[]) {
+	unsigned short lo = s & 0xFF;
+	unsigned short hi = s & 0xFF00;
+	unsigned short his = hi >> 8;
+	ar[0] = static_cast<char>(lo);
+	ar[1] = static_cast<char>(his);
+}
+unsigned short n_tgaheader::charsToShort(const char ar[]) {
+	unsigned char lo_c = static_cast<unsigned char>(ar[0]);/*git rid of the sign before changing to short*/
+	unsigned char hi_c = static_cast<unsigned char>(ar[1]);
+	unsigned short lo = static_cast<unsigned short>(lo_c);
+	unsigned short his = static_cast<unsigned short>(hi_c);
+	unsigned short hi = his << 8;
+	unsigned short s = hi | lo;
+	return s;
+}
 CTargaImage::CTargaImage() :m_ImageDataIsOwned(false), pStream_in(NULL), pStream_out(NULL),
 m_xOrigin(0), m_yOrigin(0), m_colorDepth(0x00), m_imageDataType(0x00), m_imageDataFormat(0x00),
 m_imageDesc(0x00), m_pImageData(NULL),
@@ -72,20 +115,34 @@ unsigned char CTargaImage::Open(const char* filename)
 		return ECODE_ABORT;
 	if (!IsStateInitialized())
 		return ECODE_ABORT;
-	pStream_in = fopen(filename, "rb");
+	std::string inFile(filename);
+	//pStream_in = fopen(filename, "rb");
+	pStream_in = new ifstream(inFile, ios::in|ios::binary|ios::ate);/*ate puts pointer at end of file which makes tellg give the size of the file when called*/
 	if (pStream_in == NULL)
 		return ECODE_USERERR_ABORT;
 	tgaheader_t tgaHeader;
 
 	// read the TGA header
-	fread(&tgaHeader, 1, sizeof(tgaheader_t), pStream_in);
-
+	int tgaheader_size = (int)sizeof(tgaheader_t);
+	int infile_size = (int)pStream_in->tellg();
+	if (tgaheader_size >= infile_size) {
+		cout << "\n ERROR file too small, empty image or lack of tga header\n";
+		pStream_in->close();
+		return ECODE_FAIL;
+	}
+	char* tgaheader_cArray = new char[tgaheader_size];
+	pStream_in->seekg(0, ios::beg);
+	pStream_in->read(tgaheader_cArray, tgaheader_size);/*assume this advances the location 'g'  could check with tellg*/
+	//fread(&tgaHeader, 1, sizeof(tgaheader_t), pStream_in);
+	n_tgaheader::chararrayToHeader(tgaheader_cArray, tgaHeader);
+	delete[] tgaheader_cArray;
 	// see if the image type is one that we support (RGB, RGB GRAYSCALE,)  cut out the RLE stuff for now
 	if (((tgaHeader.imageTypeCode != TGA_RGB) && (tgaHeader.imageTypeCode != TGA_GRAYSCALE)) ||
 		tgaHeader.colorMapType != 0)
 	{
 		if (pStream_in) {
-			fclose(pStream_in);
+			pStream_in->close();
+			//fclose(pStream_in);
 		}
 		return ECODE_FAIL;
 	}
@@ -101,7 +158,8 @@ unsigned char CTargaImage::Open(const char* filename)
 	if (((colorMode < 3) || (colorMode > 4)) || (!IsGoodImageDim(m_width)) || (!IsGoodImageDim(m_height)))
 	{
 		if (pStream_in) {
-			fclose(pStream_in);
+			pStream_in->close();
+			//fclose(pStream_in);
 		}
 		return ECODE_FAIL;
 	}
@@ -111,26 +169,29 @@ unsigned char CTargaImage::Open(const char* filename)
 	// allocate memory for TGA image data
 	m_pImageData = new unsigned char[m_imageSize];
 	if (m_pImageData == NULL) {
-		if (pStream_in)
-			fclose(pStream_in);
 		return ECODE_FAIL;
 	}
 	m_ImageDataIsOwned = true;
 
 	// skip past the id if there is one
-	if (tgaHeader.idLength > 0)
-		fseek(pStream_in, SEEK_CUR, tgaHeader.idLength);
+	if (tgaHeader.idLength > 0) {
+		int header_idLength = static_cast<int>(tgaHeader.idLength);
+		pStream_in->seekg(header_idLength, ios::cur);
+		//fseek(pStream_in, SEEK_CUR, tgaHeader.idLength);
+	}
 
 	// read image data
-	fread(m_pImageData, 1, m_imageSize, pStream_in);
+	char* signed_pImageDate = reinterpret_cast<char*>(m_pImageData);//both should be 1 byte so this shouldn't make a difference
+	int _imageSize = static_cast<int>(m_imageSize);/*read uses int*/
+	pStream_in->read(signed_pImageDate, _imageSize);
+	//fread(m_pImageData, 1, m_imageSize, pStream_in);
 	//IGNORE IF RLE compressed image for now to correct if needed see code in book
 
 	if (pStream_in) {
-		int err = fclose(pStream_in);
-		if (err != 0) {
-			Release();
-			return ECODE_FAIL;
-		}
+		pStream_in->close();
+		delete pStream_in;
+		pStream_in = NULL;
+		//int err = fclose(pStream_in);
 	}
 	switch (tgaHeader.imageTypeCode)
 	{
@@ -206,7 +267,8 @@ unsigned char CTargaImage::Write(const char* filename, unsigned char bpp) {
 	//set the size of the image 
 	m_imageSize = bpp * m_width * m_height; //this is done before the multiplication by 8
 
-	pStream_out = fopen(cur_filename, "wxb");
+	pStream_out = new ofstream(cur_filename, ios::binary);
+	//pStream_out = fopen(cur_filename, "wxb");
 	if (pStream_out==NULL) {
 		SetFailErr(FILEIO_ERR_FOPENFAIL);
 		return m_obj_err;
@@ -225,19 +287,22 @@ unsigned char CTargaImage::Write(const char* filename, unsigned char bpp) {
 	tgaHeader.height = m_height;
 	tgaHeader.bpp = bpp * 8; //3*8 for rgb , 4*8 for rgba
 	tgaHeader.imageDesc = m_imageDesc; //just to be quick same and return the same values as was originally here
-	size_t n_written = fwrite(&tgaHeader, 1, sizeof(tgaheader_t), pStream_out);
-	if (n_written < sizeof(tgaheader_t)) {
-		fclose(pStream_out);
-		SetFailErr(FILEIO_ERR_FWRITEFAIL);
-		return  m_obj_err;
-	}
-	n_written = fwrite(m_pImageData, 1, m_imageSize, pStream_out);
-	if (n_written < 1) {
-		fclose(pStream_out);
-		SetFailErr(FILEIO_ERR_FWRITEFAIL);
-		return m_obj_err;
-	}
-	fclose(pStream_out);
+	int tgaheader_size = (int)sizeof(tgaheader_t);
+	char* tgaheader_cArray = new char[tgaheader_size];
+	n_tgaheader::headerToChararray(tgaHeader, tgaheader_cArray);
+	std::cout << "start pos:" << pStream_out->tellp() << '\n';
+	pStream_out->write(tgaheader_cArray, tgaheader_size);
+	std::cout << "after write of header: " << pStream_out->tellp() << '\n';
+	//size_t n_written = fwrite(&tgaHeader, 1, sizeof(tgaheader_t), pStream_out);
+	char* signed_pImageData = reinterpret_cast<char*>(m_pImageData);
+	//assume the write advances the file g position
+	pStream_out->write(signed_pImageData, static_cast<int>(m_imageSize));
+	std::cout << "after write of image data: " << pStream_out->tellp() << '\n';
+	//n_written = fwrite(m_pImageData, 1, m_imageSize, pStream_out);
+	pStream_out->close();
+	delete pStream_out;
+	pStream_out = NULL;
+	//fclose(pStream_out);
 	return ECODE_OK;
 }
 bool CTargaImage::IsGoodImageDim(unsigned short dim)

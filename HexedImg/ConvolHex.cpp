@@ -165,26 +165,29 @@ bool ConvolHex::isIMaskInside(long hi, long hj)
 
 namespace threadedConvol {
 #ifndef MECVISPI_WIN
-  inline bool convInImg(long width, long height, long x_i, long y_i) {
-    if (x_i < 0 || y_i < 0)
-      return false;
-    if (x_i >= width || y_i >= height)
-      return false;
-    return true;
-  }
-  void* runConvThread(void* IOVarsVoid) {
-    s_convKernVars* IOVars = (s_convKernVars*)IOVarsVoid;
-    long indexShift = (long)IOVars->hex_index;
-    /*divide number of hexes by number of threads*/
-    long num_passes = IOVars->num_Hex / THREADEDCONVOL_NUMTHREADS;
-    for (long i = 0; i < num_passes; i++) {
-      long cur_index = i * THREADEDCONVOL_NUMTHREADS + indexShift;
-      IOVars->hex_index = cur_index;
-      convCellKernel(*IOVars);
-    }
-    pthread_exit(NULL);
-	return NULL;
-  }
+	inline bool convInImg(long width, long height, long x_i, long y_i) {
+		if (x_i < 0 || y_i < 0)
+			return false;
+		if (x_i >= width || y_i >= height)
+			return false;
+		return true;
+	}
+	void* runConvThread(void* IOVarsVoid) {
+		s_convKernVars* IOVars = (s_convKernVars*)IOVarsVoid;
+		long indexShift = (long)IOVars->hex_index;
+		/*divide number of hexes by number of threads*/
+		long num_passes = IOVars->num_Hex / THREADEDCONVOL_NUMTHREADS;
+		for (long i = 0; i < num_passes; i++) {
+			long cur_index = i * THREADEDCONVOL_NUMTHREADS + indexShift;
+			IOVars->hex_index = cur_index;
+			n_Convul::convCellKernel(*IOVars);
+		}
+		pthread_exit(NULL);
+		return NULL;
+	}
+#endif
+}
+ namespace n_Convol{
   void convCellKernel(s_convKernVars IOVars) {
     long hex_i = ((s_Hex*)IOVars.outHex[IOVars.hex_index])->i;
     long hex_j = ((s_Hex*)IOVars.outHex[IOVars.hex_index])->j;
@@ -234,5 +237,5 @@ namespace threadedConvol {
     
     return;
   }
-#endif
+
 }

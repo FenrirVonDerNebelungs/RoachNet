@@ -220,7 +220,7 @@ unsigned char s_nNode::init(int nNodes) {
 		return ECODE_ABORT;
 	s_Node::init(nNodes);
 	if (N_mem >= 1) {
-		w = new float(N_mem);
+		w = new float[N_mem];
 		if (w == NULL)
 			return ECODE_FAIL;
 	}
@@ -375,13 +375,37 @@ unsigned char s_HexPlate::init(const s_HexPlate* other) {
 			if ((this->nodes[ii]) == NULL)
 				return ECODE_FAIL;
 			((s_Hex*)this->nodes[ii])->init(other_hex);
+		}
+	}
+	/*the plate is now created but the webs still point to the old plate */
+	for(int ii=0; ii<N_mem; ii++){
+		if(this->nodes[ii]!=NULL){
 			/*now fix the web since the old web will point to the web on the original plate*/
 			for (int i_web = 0; i_web < 6; i_web++) {
 				s_Hex* this_hex = (s_Hex*)this->nodes[ii];
-				long this_index_in_plate = this_hex->web[i_web]->thislink;
-				s_Node* this_plate_ptr = this->nodes[this_index_in_plate];
-				this_hex->web[i_web] = this_plate_ptr;
+				s_Hex* lower_web_hex = (s_Hex*)this_hex->web[i_web];
+				if (lower_web_hex != NULL) {
+					long this_index_in_plate = lower_web_hex->thislink;/*thislink index is correct alghough pointer is wrong*/
+					s_Node* this_plate_ptr = this->nodes[this_index_in_plate];
+					this_hex->web[i_web] = this_plate_ptr;
+				}
+				else
+					this_hex->web[i_web] = NULL;
 			}
+		}
+	}
+	return ECODE_OK;
+}
+unsigned char s_HexPlate::initFixDownTarget(const s_HexPlate* other) {
+	unsigned char err = init(other);
+	if (err!=ECODE_OK)
+		return err;
+	for (int ii = 0; ii < this->N; ii++) {
+		s_Hex* this_hex = this->get(ii);
+		const s_Hex* other_hex = other->getConst(ii);
+		this_hex->nodes[0] = (s_Node*)other_hex;
+		for (int i_hanging = 1; i_hanging < this_hex->N; i_hanging++) {/*this will always be 6 since s_Hex always spawns with  7 hanging nodes*/
+			this_hex->nodes[i_hanging] = (s_Hex*)other_hex->web[i_hanging - 1];
 		}
 	}
 	return ECODE_OK;
@@ -493,8 +517,8 @@ int n_HexPlate::rotateCCLK(const s_Hex* hexNode, const int start_web_i) {
 	for (int i = 0; i < 3; i++) {
 		web_i = start_web_i + i;
 		/*only values for strt i will be 0 and 3 so don't need a check for >=6*/
-		if (web_i < 0)
-			web_i += 6;
+		if (web_i >=6)
+			web_i -= 6;
 		ndPtr = (s_Hex*)hexNode->web[web_i];
 		if (ndPtr != NULL) {
 			found = true;
@@ -502,6 +526,34 @@ int n_HexPlate::rotateCCLK(const s_Hex* hexNode, const int start_web_i) {
 		}
 	}
 	return found ? web_i : -1;
+}
+bool n_HexPlate::indexChainRoot(s_HexPlate* root, s_HexPlate* base, s_Hex* root_first_node, s_Hex* base_first_node, long hex_start_i, long hex_end_i) {
+	s_Hex* lo_hex = base_first_node;
+	s_Hex* hi_hex = root_first_node;
+	int web_start_i = 0;
+	for (long hex_i = (hex_start_i+1); hex_i < hex_end_i; hex_i++) {
+		hi_hex->nodes[0] = lo_hex;
+		s_Hex* next_hi_hex = root->get(hex_i);
+		int web_to_next_nd = getWebDir(hi_hex, next_hi_hex, web_start_i);
+		if (web_to_next_nd < 0)
+			return false;
+		s_Hex* next_low_hex = (s_Hex*)lo_hex->web[web_to_next_nd];
+		lo_hex = next_low_hex;
+		hi_hex = next_hi_hex;
+	}
+	return true;
+}
+int n_HexPlate::getWebDir(s_Hex* start_nd, s_Hex* end_nd, int& web_start_i) {
+	int web_dir_i = -1;
+	for (int web_cnt = 0; web_cnt < 6; web_cnt++) {
+		if ((start_nd->web[web_start_i]) == end_nd) {
+			web_dir_i = web_start_i;
+			break;
+		}
+		int inc_web_start_i = web_start_i + 1;
+		web_start_i = Math::loop(inc_web_start_i, 6);
+	}
+	return web_dir_i;
 }
 s_Hex* n_HexPlate::connLineStackedPlates(s_Hex* nd_hi, s_Hex* nd_lo, int next_web_i) {
 	int hex_i = -1;
@@ -522,22 +574,22 @@ s_Hex* n_HexPlate::connLineStackedPlates(s_Hex* nd_hi, s_Hex* nd_lo, int next_we
 		return NULL;
 	return hi_hex;
 }
-int n_HexPlate::turnCornerStackedPlates(s_Hex** nd_hi, s_Hex** nd_lo, int fwd_web_i, int rev_web_i) {
-	int next_web_i = -1;
+int n_HexPlate::turnCornerStackedPlates(s_Hex** nd_hi, s_Hex** nd_lo, int next_web_i, int fwd_web_i, int rev_web_i) {
+	/*assumes nd_hi is already connected to its low node*/
+	*nd_lo = (s_Hex*)(*nd_hi)->nodes[0];
 	if (next_web_i == fwd_web_i) {
 		next_web_i = rotateCLK(*nd_hi, fwd_web_i);
-		if (next_web_i>=0) {
+		if (next_web_i >= 0) {
 			*nd_hi = (s_Hex*)(*nd_hi)->web[next_web_i];
 			*nd_lo = (s_Hex*)(*nd_lo)->web[next_web_i];
-			next_web_i = ((*nd_lo) != NULL) ? 0 : -2;
+			next_web_i = ((*nd_lo) != NULL) ? rev_web_i : -2;
 		}
-	}
-	if (next_web_i == rev_web_i) {
+	}else if (next_web_i == rev_web_i) {
 		next_web_i = rotateCCLK(*nd_hi, rev_web_i);
 		if (next_web_i >= 0) {
 			*nd_hi = (s_Hex*)(*nd_hi)->web[next_web_i];
 			*nd_lo = (s_Hex*)(*nd_lo)->web[next_web_i];
-			next_web_i = ((*nd_lo) != NULL) ? 3 : -2;
+			next_web_i = ((*nd_lo) != NULL) ? fwd_web_i : -2;
 		}
 	}
 	return next_web_i;
@@ -589,7 +641,7 @@ unsigned char n_HexPlate::pool2init(s_HexPlate* o, s_HexPlate* pool) {
 				/*check if the hex is fully linked around, in which case it will be one of the pool hexes*/
 				bool is_large_candidate = true;
 				for (int ii = 0; ii < 6; ii++)
-					if (large_hex->web[ii] < 0)
+					if (large_hex->web[ii] ==NULL)
 						is_large_candidate = false;
 				if (is_large_candidate) {
 					large_hexes[num_large_hexes] = large_hex;
@@ -610,7 +662,7 @@ unsigned char n_HexPlate::pool2init(s_HexPlate* o, s_HexPlate* pool) {
 		/*need to drop two lines*/
 		start_hex = next_down_hex;
 		next_down_hex = NULL;
-		int next_down_hex_web_i = rotateCCLK(start_hex, web_left_i);
+		next_down_hex_web_i = rotateCCLK(start_hex, web_left_i);
 		if (next_down_hex_web_i >= 0)
 			next_down_hex = (s_Hex*)start_hex->web[next_down_hex_web_i];
 
@@ -844,6 +896,7 @@ unsigned char s_HexPlateLayer::init(int Nplates) {
 		p[ii] = NULL;
 	N_mem = Nplates;
 	N = 0;
+	return ECODE_OK;
 }
 unsigned char s_HexPlateLayer::init(const s_HexPlateLayer* pl) {
 	if (pl->p == NULL)

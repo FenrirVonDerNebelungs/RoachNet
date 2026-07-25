@@ -1,5 +1,6 @@
 #include "Base.h"
-Base::Base() { ; }
+Base::Base():m_obj_err(0x00), m_obj_state(0x00) 
+{ ; }
 Base::~Base() { ; }
 
 void Base::Zero_Memory(void* mem_ptr, int byte_size) {

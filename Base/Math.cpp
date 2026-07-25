@@ -139,6 +139,9 @@ namespace Math {
 			return false;
 		return GaussianNumInt(Int.sigma, Int.max, Int.N, Int.I, Int.X);
 	}
+	void timeSeed() {
+		std::srand((unsigned int)std::time(0));
+	}
 	float randAng(float startRad, float endRad) {
 		int randFullRange = rand() % MATH_RANDMOD;
 		float rand_ = (float)randFullRange;
@@ -166,7 +169,7 @@ namespace Math {
 		}
 		/*this will not be exact*/
 		float integratedProb = ((float)rand100) / ((float)randModHalf);
-		int max_i_index = gI.N - 1;
+		int max_i_index = (int)roundf(gI.N) - 1;
 		float fixGaussFac = gI.I[ max_i_index ];
 		if (fixGaussFac <= 0.f)
 			return 0.f;
@@ -195,6 +198,12 @@ namespace Math {
 		/*the range must already be set in gI*/
 		float new_ang = center_ang + randGauss;
 		return Ang2PI(new_ang);
+	}
+	long ftol(float f) {
+		return lroundf(f);
+	}
+	float ltof(long l) {
+		return (float)l;
 	}
 }
 namespace arrMath {
@@ -228,6 +237,10 @@ namespace arrMath {
 namespace vecMath {
 	s_2pt add(const s_2pt& v1, const s_2pt& v2) {
 		s_2pt v = { v1.x0 + v2.x0, v1.x1 + v2.x1 };
+		return v;
+	}
+	s_2pt_i add(const s_2pt_i& v1, const s_2pt_i& v2) {
+		s_2pt_i v = { v1.x0 + v2.x0, v1.x1 + v2.x1 };
 		return v;
 	}
 	s_2pt add(const s_2pt& v1, const s_2pt& v2, const s_2pt& v3) {
@@ -314,7 +327,7 @@ namespace imgMath {
 		int isum = i0 + i1;
 		if (isum > 0xFF)
 			isum = 0xFF;
-		return (unsigned char)isum;
+		return static_cast<unsigned char>(isum);
 	}
 	s_rgba convToRGBA(float r, float g, float b) {
 		if (r > 255.f)
@@ -358,6 +371,30 @@ namespace imgMath {
 		rgb0.g = add(rgb0.g, rgb1.g);
 		rgb0.b = add(rgb0.b, rgb1.b);
 	}
+	s_rgb gradRGB(const s_rgb& rgb0, const s_rgb& rgb1, float relI) {
+		s_rgb rgb_end = mulIntensity(rgb1, relI);
+		float rev_relI = 1.f - relI;
+		s_rgb rgb_start = mulIntensity(rgb0, rev_relI);
+		s_rgb col;
+		col.r = add(rgb_start.r,rgb_end.r);
+		col.g = add(rgb_start.g,rgb_end.g);
+		col.b = add(rgb_start.b,rgb_end.b);
+		return col;
+	}
+	void limitRGB(s_rgb_f& rgb) {
+		if (rgb.r > 255.f)
+			rgb.r = 255.f;
+		if (rgb.r < 0.f)
+			rgb.r = 0.f;
+		if (rgb.g > 255.f)
+			rgb.g = 255.f;
+		if (rgb.g < 0.f)
+			rgb.g = 0.f;
+		if (rgb.b > 255.f)
+			rgb.b = 255.f;
+		if (rgb.b < 0.f)
+			rgb.b = 0.f;
+	}
 	s_2pt_i convToVint(const s_2pt& vec) {
 		s_2pt_i vi;
 		vi.x0 = (long)floorf(vec.x0);
@@ -380,6 +417,14 @@ namespace imgMath {
 	s_rgb tup3ToRgb(const Tup3& tup) {
 		s_rgb rgb = convToRGB(tup.x, tup.y, tup.z);
 		return rgb;
+	}
+	void RGBToFloats(const s_rgb& rgb_c, float rgb_f[]) {
+		rgb_f[0] = (float)rgb_c.r;
+		rgb_f[1] = (float)rgb_c.g;
+		rgb_f[2] = (float)rgb_c.b;
+	}
+	void FloatsToRGB(const float rgb_f[], s_rgb& rgb_c) {
+		rgb_c = convToRGB(rgb_f[0], rgb_f[1], rgb_f[2]);
 	}
 	s_2pt perpUR(s_2pt& vec) {
 		s_2pt perp = { -vec.x1, vec.x0 };

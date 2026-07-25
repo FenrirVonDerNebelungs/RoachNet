@@ -1,8 +1,14 @@
 #pragma once
 #ifndef TUPLES_H
 #define TUPLES_H
+
+#define MECVISPI_WIN
+
+#include <cstdint>
+#include <bit>
 #include <iostream>
 #include <fstream>
+#include <filesystem>
 #include <cstdio>/*added for targa*/
 #include <string>
 #include <thread>

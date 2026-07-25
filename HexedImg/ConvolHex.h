@@ -82,11 +82,15 @@ struct s_convKernVars {
 	long num_Hex;
 	s_Node** outHex;
 };
+
 namespace threadedConvol {
 #ifndef MECVISPI_WIN
 	inline bool convInImg(long width, long height, long x_i, long y_i);
-	void convCellKernel(s_convKernVars IOVars);
+
 	void *runConvThread(void* IOVarsVoid);
 #endif
+}
+namespace n_Convol {
+	void convCellKernel(s_convKernVars IOVars);
 }
 #endif

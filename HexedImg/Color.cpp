@@ -3,6 +3,12 @@
 s_ColPlateLayer::s_ColPlateLayer() { ; }
 s_ColPlateLayer::~s_ColPlateLayer() { ; }
 
+Col::Col() :m_genCol(NULL), m_Cols(NULL), m_N_Cols(0), m_mem_Cols(0) {
+	;
+}
+Col::~Col() {
+	;
+}
 unsigned char Col::init(int nCols) {
 	m_genCol = new ColPlate;
 	if (Err(m_genCol->init()))
@@ -36,56 +42,40 @@ unsigned char Col::addCol(s_ColWheel* col) {
 	m_N_Cols++;
 	return ECODE_OK;
 }
-unsigned char Col::spawn(s_HexBasePlate* hexedImg, s_ColPlateLayer* colPlates) {
+unsigned char Col::spawn(s_HexPlate* hexedImg, s_ColPlateLayer* colPlates) {
 	unsigned char errc = ECODE_OK;
 	errc = initPlateLayer(colPlates);
 	if (Err(errc))
 		return errc;
 	for (int i = 0; i < m_N_Cols; i++) {
-		errc |= m_genCol->spawn(hexedImg, colPlates->get(i), m_Cols[i]);
+		errc |= m_genCol->spawn(hexedImg, (s_ColPlate*)colPlates->get(i), m_Cols[i]);
 	}
 	return errc;
 }
 void Col::despawn(s_ColPlateLayer* colPlates) {
+	if (colPlates == NULL)
+		return;
 	for (int i = 0; i < m_N_Cols; i++)
-		m_genCol->despawn(colPlates->get(i));
+		m_genCol->despawn((s_ColPlate*)colPlates->get(i));
 	releasePlateLayer(colPlates);
 }
-unsigned char Col::samLayer(s_ColPlateLayer* colPlates, int plate_i[], int plate_N, s_HexBasePlateLayer* sLayer) {
-	if (plate_i == NULL || plate_N<1)
-		return ECODE_ABORT;
-	if (sLayer == NULL)
-		return ECODE_ABORT;
-	if (Err(sLayer->init(plate_N)))
-		return ECODE_FAIL;
-	for (int i = 0; i < plate_N; i++) {
-		int cur_plate_index = plate_i[i];
-		if (cur_plate_index<0 || cur_plate_index>colPlates->N)
-			return ECODE_ABORT;
-		s_HexBasePlate* cur_col_plate = (s_HexBasePlate*)colPlates->get(cur_plate_index);
-		int cur_sam_i = sLayer->N;
-		if (cur_sam_i >= sLayer->getNmem())
-			return ECODE_ABORT;
-		sLayer->p[cur_sam_i] = (s_HexPlate*)cur_col_plate;
-		sLayer->N += 1;
+unsigned char Col::run(s_HexPlate* hexedImg, s_ColPlateLayer* colPlates) {
+	long num_hexes = hexedImg->N;
+	for (long hex_i = 0; hex_i < num_hexes; hex_i++) {
+		n_Col::run(hexedImg, colPlates, hex_i);
 	}
 	return ECODE_OK;
 }
-void Col::desamLayer(s_HexBasePlateLayer* sLayer) {
-	if (sLayer == NULL)
-		return;
-	for (int ii = 0; ii < sLayer->N; ii++)
-		sLayer->p[ii] = NULL;
-	sLayer->N = 0;
-	sLayer->release();
-}
+
 unsigned char Col::initPlateLayer(s_ColPlateLayer* colPlates) {
 	if (colPlates == NULL)
 		return ECODE_ABORT;
 	if (Err(colPlates->init(m_N_Cols)))
 		return ECODE_FAIL;
+	colPlates->N = 0;
 	for (int i = 0; i < m_N_Cols; i++) {
 		colPlates->p[i] = (s_HexPlate*)(new s_ColPlate);
+		colPlates->N++;
 	}
 	return ECODE_OK;
 }
@@ -100,13 +90,13 @@ void Col::releasePlateLayer(s_ColPlateLayer* colPlates) {
 	}
 }
 
-bool n_Col::run(s_HexBasePlate* hexedImg, s_ColPlateLayer* colPlates, long plate_hex_index) {
+bool n_Col::run(s_HexPlate* hexedImg, s_ColPlateLayer* colPlates, long plate_hex_index) {
 	bool retVal = true;
 	for (long ii = 0; ii < colPlates->N; ii++)
 		retVal &= runPlate(hexedImg, colPlates, ii, plate_hex_index);
 	return retVal;
 }
-bool n_Col::runPlate(s_HexBasePlate* hexedImg, s_ColPlateLayer* colPlates, long layer_index, long plate_hex_index) {
+bool n_Col::runPlate(s_HexPlate* hexedImg, s_ColPlateLayer* colPlates, long layer_index, long plate_hex_index) {
 	s_ColPlate* colPlt = colPlates->get(layer_index);
 	return n_ColPlate::run(hexedImg, colPlt, plate_hex_index);
 }

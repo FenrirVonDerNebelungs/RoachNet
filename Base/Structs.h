@@ -23,6 +23,8 @@ public:
 										   the size of nodes in memory must be equal for 
 										   the node pointers to be copied */
 	inline int getNmem() { return N_mem; }
+	inline virtual s_Node* getHanging(int node_i) { return this->nodes[node_i]; }
+	inline virtual void setHanging(s_Node* nd, int node_i) { this->nodes[node_i] = nd; }
 
 	float x; /* prob 64 bit*/
 	float y;
@@ -86,6 +88,9 @@ public:
 	void          release();
 	void          reset();
 	s_nNode& operator=(const s_nNode& other);
+	inline s_nNode* getHanging(int node_i) { return (s_nNode*)this->nodes[node_i]; }
+	inline void setHanging(s_nNode* nd, int node_i) { this->nodes[node_i] = nd; }
+
 
 	s_Hex* hex;/*hex node this NNet node  is attached to if such is linked*/
 
@@ -128,6 +133,8 @@ public:
 
 	unsigned char         init(long nNodes);/*s_Hex nodes are created by this*/
 	virtual unsigned char init(const s_HexPlate* other);/*down connections will still point to wherever the original pointed, the web is fixed however*/
+	virtual unsigned char initFixDownTarget(const s_HexPlate* other);/*same as above but fixes the downlinks to the s_HexPlate "other" with each top pointed to 
+	                                                                   7 down 0 in the middle and then the 6 around following the web direction*/
 	void                  initRs(float inRhex);
 	void                  release();/*assumes that the plate owns its subnodes if not NULL*/
 
@@ -151,16 +158,19 @@ protected:
 };
 namespace n_HexPlate {
 	void genHexU_0(s_2pt hexU[]);
-	int rotateCLK(const s_Hex* hexNode, const int start_web_i);
+	int rotateCLK(const s_Hex* hexNode, const int start_web_i);/*rotates cclk with y axis reversed*/
 	int rotateCCLK(const s_Hex* hexNode, const int start_web_i);
+	bool indexChainRoot(s_HexPlate* root, s_HexPlate* base, s_Hex* root_first_node, s_Hex* base_first_node, long hex_start_i, long hex_end_i);/*hex_start_i corresponds to the index of root_first_node, hex_end_i is one beyond what will be set*/
+	int getWebDir(s_Hex* start_nd, s_Hex* end_nd, int& web_start_i);
+
 	s_Hex* connLineStackedPlates(s_Hex* nd_hi, s_Hex* nd_lo, int next_web_i);/* puts the low nodes in a line along the direction
 																			    determined by nex_web_i into nodes[0] of the hexes of the hi plate
 																				returns last hi node at the end of the line of hi nodes */
-	int turnCornerStackedPlates(s_Hex** nd_hi, s_Hex** nd_lo, int fwd_web_i, int rev_web_i);/* turns around a corner for at the end of a
+	int turnCornerStackedPlates(s_Hex** nd_hi, s_Hex** nd_lo, int next_web_i, int fwd_web_i=0, int rev_web_i=3);/* turns around a corner for at the end of a
 																						     line in a web linked hex mesh
 																							 returns the new direction and fills
 																							 the hi/low node ptrs with next pair of hexes*/
-	long countNumHexesInLine(long start_i, int dir_web_i, s_HexPlate* o);/*counts the number of hexes in line moving in the web direction defined by dir_web_i from start_i including start_ in the number*/
+	long countNumHexesInLine(long start_i, int dir_web_i, s_HexPlate* o); /*counts the number of hexes in line moving in the web direction defined by dir_web_i from start_i including start_ in the number*/
 	unsigned char pool2init(s_HexPlate* o, s_HexPlate* pool);/*creates a new hexPlate from the original, o, hexplate with the new plate reduced by a factor of 2
 															     each of the new down links points to the 7 hexes on the o plate that the new plate is above*/
 	//long xyToHexi(const s_2pt& xy);

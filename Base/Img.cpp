@@ -312,9 +312,9 @@ unsigned char Img::PrintMaskedImg(long x_i, long y_j, const Img& pImg, const s_r
 	for (long j = 0; j < sheight; j++) {
 		for (long i = 0; i < swidth; i++) {
 			long img_index = j * swidth + i;
-			unsigned char maskchar = pImg.getChar(img_index);
+			s_rgb mask_col = pImg.GetRGB(img_index);
+			unsigned char maskchar = mask_col.r;
 			if (maskchar > 0x10) {
-				//_rgba.a = maskchar;
 				long main_i = itl + i;
 				long main_j = jtl + j;
 				if (main_i < 0 || main_j < 0)
@@ -366,6 +366,32 @@ unsigned char Img::DrawLine(s_2pt_i& pt0, s_2pt_i& pt1, s_rgb& rgba)
 		long y_i = (long)roundf(vloc.x1);
 		if (inImg(x_i, y_i)) {
 			long index = y_i * m_width + x_i;
+			SetRGB(index, rgba);
+		}
+		vlen += vinc;
+	} while (vlen <= vmag);
+	return ECODE_OK;
+}
+unsigned char Img::DrawLineGrad(s_2pt_i& pt0, s_2pt_i& pt1, s_rgb& rgb1, s_rgb& rgb2) {
+	s_2pt X0 = { (float)pt0.x0, (float)pt0.x1 };
+	s_2pt X1 = { (float)pt1.x0, (float)pt1.x1 };
+	s_2pt v01 = vecMath::v12(X0, X1);
+	float vmag = vecMath::len(v01);
+	if (vmag <= 0.f)
+		return ECODE_OK;
+	s_2pt u01 = { v01.x0 / vmag, v01.x1 / vmag };
+	float vlen = 0.f;
+	float vinc = 0.5;
+	do {
+		s_2pt vloc = { u01.x0 * vlen, u01.x1 * vlen };
+		vloc.x0 += X0.x0;
+		vloc.x1 += X0.x1;
+		long x_i = (long)roundf(vloc.x0);
+		long y_i = (long)roundf(vloc.x1);
+		if (inImg(x_i, y_i)) {
+			long index = y_i * m_width + x_i;
+			float relI = vlen / vmag;
+			s_rgb rgba = imgMath::gradRGB(rgb1, rgb2, relI);
 			SetRGB(index, rgba);
 		}
 		vlen += vinc;

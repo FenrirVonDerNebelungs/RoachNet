@@ -5,14 +5,29 @@
 #ifndef STRUCTS_H
 #include "../Base/Structs.h"
 #endif
+#ifndef IMG_H
+#include "../Base/Img.h"
+#endif
 
 #define HEXEYE_MAXNEBINDXS 6 
 #define HEXEYE_RDIFFTOL 0.0001f
+#define HEXEYE_MAXIMGFITLEVEL 20
+const float HEXEYE_W_RATIO_COL_SUB_CENTER = 1.5f; /*weight of center in color transfer is this faction vs the weight of the cols of the 6 outer nodes*/
+const int HEXEYE_NUM_LOWER_NODES_PER_HEX = 7;
+
+struct s_highConvKernVars {/*struct is used to fill colors in eye's higher levels*/
+	float w_center;/*weight of center node*/
+	float w_aux;/*weight of the 6 nodes surrounding the center 6*w_aux+w_center=1 */
+
+	long hex_index;
+	long num_Hex;/*number of top hexes*/
+	s_Node** Hexes;/*top hexes*/
+};
 
 class s_HexEye {
 public:
 	s_HexEye();
-	s_HexEye();
+	~s_HexEye();
 
 	unsigned char init(int NumLev);
 	unsigned char init(const s_HexEye& other);
@@ -34,15 +49,29 @@ public:
 
 	long width;
 	long height;
+
+	float w_col_center; /*weights that add up to 1 that are used to compute the colors of the higher levels*/
+	float w_col_aux;
 protected:
 	int N_mem;
 };
 
 namespace n_HexEye{
-	unsigned char imgRoot(s_HexEye* eye, s_HexBasePlate* pImg, long center_i);/*roots on img, the hexEye should be one level above the img*/
-	bool check_imgRoot(s_HexEye* eye, s_HexBasePlate* pImg);/*checks if the geometry is correct for the hex eye to root onthe img*/
-	unsigned char imgRootL2(s_HexEye* eye, s_HexBasePlate* pImg, long center_i);/*roots on the image plate, requires the eye to have only 2 levels*/
-	bool check_imgRootL2(s_HexEye* eye, s_HexBasePlate* pImg);
+	unsigned char imgRoot(s_HexEye* eye, s_HexPlate* pImg, long center_i);/*roots on img, the hexEye should be one level above the img*/
+	bool check_imgRoot(s_HexEye* eye, s_HexPlate* pImg);/*checks if the geometry is correct for the hex eye to root onthe img*/
+	unsigned char imgRootL2(s_HexEye* eye, s_HexPlate* pImg, long center_i);/*roots on the image plate, requires the eye to have only 2 levels*/
+	bool check_imgRootL2(s_HexEye* eye, s_HexPlate* pImg);
+
+	unsigned char updateCol(s_HexEye* eye);/*assumes the base of the eye has been filled with the correct colors, updates the colors in the higher levels*/
+
+	unsigned char rootUnderEyeHex(s_HexEye* eye, const s_HexEye* overEye, const int lev_i, const int hex_i);
+	/*helper to root Under Eye*/
+	bool recursiveTraceEyeHexDown(s_Hex* tr_hex, s_Hex* over_tr_hex, int trace_level_N, long down_i_trace[]);
+
+	/*helper to updateCol*/
+	unsigned char runEyeLevel(s_HexEye* seye, int i_level);/*index of level starting at 0*/
+	unsigned char runEyeLevelSingleThread(s_highConvKernVars IOVars);
+	void convHexKernel(s_highConvKernVars IOVars);
 }
 
 class HexEye : public Base {
@@ -50,6 +79,7 @@ public:
 	HexEye();
 	~HexEye();
 
+	unsigned char init(float r, Img* im);/*init an eye generator so that it is the largest eye that will fit in this image*/
 	unsigned char init(float r, int NLevels);/*1 level = 1 hex, 2 levels a 1 hex and a 7 hex level, etc...*/
 	void          release();
 
@@ -60,8 +90,12 @@ public:
 	inline long getNHexes(int i) { return m_N_hexes[i]; }
 
 	s_HexEye& getHexEye() { return m_refEye; }
+	s_HexEye* getHexEyePtr() { return &m_refEye; }
 
 	inline float getBottomR() { return m_r; }
+
+	inline long getBaseWidth() { return m_baseWidth; }
+	inline long getBaseHeight() { return m_baseHeight; }
 protected:
 	/* dimensions of eyes this HexEye will initiate */
 	float m_r;
@@ -80,7 +114,9 @@ protected:
 	void          releaseEye(s_HexEye* neye);
 	/* helpers to init Eye */
 	long numHexInLevel(long N_prev, int N_level);
-	float sizeOfLevel(int N_level);
+	float sizeOfLevel(int N_level);/*N_level starts at 1 here not the index of the level*/
+	int largestN_level(long img_size);/*the top of the level stack has radius m_R see how many levels can be built up before the eye is too large
+	                                    returns level_N as index of level where levels are counted starting at 0 for the 1 hex level*/
 	/*                     */
 
 	unsigned char genEye(s_HexEye* neye);

@@ -6,113 +6,181 @@
 #include "../HexedImg/HexEye.h"
 #endif
 
-#define NUM_LUNA_PATTERNS 8 /* 6 luna half patterns one for each corner hex, 2 full moons one black the other white */
-#define NUM_LUNA_EYE_LEVELS 2
-#define NUM_LUNA_FOOTS 7 /* number of hexes in the lower level of the luna */
+
+//#define NUM_LUNA_EYE_LEVELS 2
+
+
+ 
 
 class s_Net {
 public:
 	s_Net();
 	~s_Net();
 
-	unsigned char init(int nLev);/*initializes the array does not own the levels */
-	unsigned char init(const s_Net& other);/*assumes that if the lev pointer is non-null the copy should own the lev*/
+	unsigned char init(int nLev);/*initializes the array does not create the levels */
+	virtual unsigned char init(const s_Net& other);/*assumes that if the lev pointer is non-null the copy should own the lev*/
+	unsigned char newLevs();/*create the levels but don't yet init the lev plates*/
+	void          delLevs();/*the level plates should already be released*/
 	void          release();/*assumes that if lev ptr is not null it is owned*/
 
 	inline s_nPlate* getTop() { return lev[0]; }
 	inline s_nPlate* getBottom() { return lev[N - 1]; }
+	inline s_nPlate* get(int i_lev) { return lev[i_lev]; }
 
 	s_nPlate** lev;/*these may be owned*/
 	int N;/*number of 'levels' or plates in this struct actually attached(or owned) */
-	s_HexEye* eye;/*this is typically  not owned*/
 
-	int hanging_plate_i;/*index of plate attached to the hanging nodes from the nodes in the bottom plate that has been selected as best 
-						  signal for the net not always filled */
-	float o;/*maximum output for this net*/
+	float o;/*output for this net */
+
+
 protected:
 	int N_mem;/*number of lev pointers*/
+
+};
+class s_HexBaseNet : public s_Net {
+public:
+	s_HexBaseNet();
+	~s_HexBaseNet();
+
+	virtual unsigned char init(const s_HexBaseNet& other);
+
+	s_HexEye* eye;/*this is typically  not owned*/
+	int N_Plates;/*number of plates the bottom of this sNet is attached to*/
+};
+class s_HexEyeNet : public s_HexBaseNet{
+public:
+	s_HexEyeNet();
+	~s_HexEyeNet();
+
+	unsigned char init(const s_HexEyeNet& other);
+
+};
+
+class s_EyeFNet : public s_HexBaseNet { /*fully connected net which will be connected at top and bottom to the eye*/
+public:
+	s_EyeFNet();
+	~s_EyeFNet();
+
+	unsigned char init(const s_EyeFNet& other);
+
 };
 namespace n_Net {
-	void rootNNet(s_Net* net, s_HexPlate* eye_base, s_HexBasePlateLayer* plates);/*assumes that the eye_base is rooted in the correct spot*/
-	void runRootedNNet(s_Net* net);
+	void run(s_Net* net);/*requies net to be rooted*/
 }
-class s_CNnets {/*cluster of CNNs that read from the same geometric location
-				  the geometric location is where the eye is rooted
-				  the nets each find a specific pattern they are programed for, the number of pats the nets find is the number of nets
-				  each net typically has it's hanging nodes root on multiple plates*/
-public:
-	s_CNnets();
-	~s_CNnets();
-	virtual unsigned char init(int nNets);/*initializes the net array does not fill pointers or own anything*/
-	virtual unsigned char init(const s_CNnets& other);/*assumes that if pointers to nets(but not eye) are non-null the objects are owned and should be copied to owned objects*/
-	virtual void          release();/*assumes that if the net pointers are non-null they are owned by this object (does not assuem ownership of eye)*/
-	s_Net** net;/*considered owned if non-null when released*/
-	s_HexEye* eye;/*not considered owned by this object but may be owned in some iherited classes*/
-	int N;/* number of nets actually pointing to something */
+namespace n_HexBaseNet {
+	inline long getPlateIndexFromRootedNetNode(s_nPlate* net_base, long net_nd_i);
+	inline void rootNetNodeOnPlate(s_nPlate* net_base, long net_nd_i, s_HexPlate* plate, long rooted_plate_index);
+}
+namespace n_HexEyeNet {
+	void rootNetFromRootedEye(s_HexBaseNet* net, s_HexPlate* plate);
+}
+namespace n_EyeFNet {
+	void rootNetFromRootedEye(s_HexBaseNet* net, s_HexPlateLayer* plates);
+	void rootNetFromRootedEye(s_HexBaseNet* net, s_HexPlate* plate, long node_offset_i, long num_plates);
+}
 
-	s_nNode* trigger_node;/*this node is setup to link to all the lowest plates,
-						   if the plates do not pass the threshold value
-						   of this node this net cluster will not try to root the eye or seed 
-						   considered owned if non-null when released*/
-protected:
-	int N_mem;
-};
-namespace n_CNnets {
-	inline bool rootEye(s_CNnets* nets, s_HexBasePlate& basePlate, long plate_index);
-	void rootOnPlates(s_CNnets* nets, s_HexBasePlateLayer& plates);/*assumes the eye has already been rooted
-																     roots each hex of the lowest layer of the net
-																	 matching the lowest layer of the eye only on those
-																	 hexes corressponding to the rooting hex in each of the plates
-																	 number of rooting/hanging nodes must equal the number of plates*/
-	void rootNNet(s_CNnets* nets, s_HexBasePlateLayer* plates);/*assumes the eye has already been rooted
-															     similar to root on plates but  NNet takes all possible data as
-															     input Xs therefore all nodes rooted on by any node(eye hex matched) in the bottom layer
-																 of the nnet must be rooted on by all nodes in the bottom layer
-																 number of hanging nodes is (total eye hexes in bottom layer)*(number of plates)
-																 order of attachement of hanging nodes is determined by the index order in the bottom
-																 level of the eye */
-	bool runNNet(s_CNnets* nets, s_HexBasePlateLayer* plates, long plate_index);/*roots and runs the nnet at plate_index*/
-}
+
 class sNet : public Base { /* class that generates the s_Net structs 'structure' net */
 public:
 	sNet();
 	~sNet();
 
-	unsigned char init(int nLev, int numLevNodes[], int numHanging);/*initiates the sNet so tha it will generate a certain kind of s_Net struct
-																	nLev is the number of levels in the s_Net
-																	numLevelNodes is an array of len nLev giving the number of nodes in each level
-																	numHanging is the number of open node pointers 'hanging' from each 
-																	node in the bottom level */
-	unsigned char init(HexEye* eye, int numPlates);  /*initializes net to have same structure as eye
-														   with number of hanging nodes equal to the number of plates*/
+	unsigned char init(int nLev, int numLevNodes[], int numHanging);
 	void release();
 
-	unsigned char spawn(s_Net* sn);
-	unsigned char spawn(s_Net* sn, s_HexEye* eye);  /*this eye should have exactly the same structure as the eye used to initialize the sNet
-												      top and bottom have 1 to 1 correspondence to eye nodes
-													  the hidden (middle) levels have each node connected (by hanging links)
-													  to all the nodes on the next level down
-													  lowest level eye num hexes = lowest num of net nodes
-													  hanging nodes from lowest net level correspond to number
-													  of plates that the net will connect to */
+	virtual unsigned char spawn(s_Net* sn);
 	void          despawn(s_Net* sn);
 
-
-	int getTotalNumWeights(s_Net* sn);/*assmes this node has been constructed for a nnet
-									  gets the total number of weights in the net counting all the weights in each level including the hanging weights*/
-	int getTotalNumNodes(s_Net* sn);/*gets total number of nodes*/
-	int dumpWeightChain(s_Net* sn, float ws[]);/*dumps all the weights in to the ws array starting from 
-											   the first node on top layer and going down through the layers of the net*/
-	bool importWeightChain(s_Net* sn, float ws[], int len_ws);/* imports the same as dumped, length must equal at least total num weights */
-	bool importBChain(s_Net* sn, float bs[], int len_bs);/* imports the b offsets for each node, length must equal total number of nodes */
+	inline int getNumLevels() { return m_nLev; }
+	inline int* getNumLevNodesPtr() { return m_numLevNodes; }
 
 protected:
+
 	int m_nLev;
 	int* m_numLevNodes;/*num of nodes in each level + num of hanging nodes has length m_nLev+1*/
 	int  m_numHanging;
+	
+};
+class sHexEyeNet : public sNet {
+public:
+	sHexEyeNet();
+	~sHexEyeNet();
 
-	unsigned char connDownNet(s_Net* sn);/*connects the levels in the s_Net to each of their lower levels
-								           assumes that the number of hanging nodes in mem is the same as the number of nodes in the lower plate*/
+	unsigned char init(HexEye* eye, int numBottomPlates_to_be_connected = 1);  /*initiates the sNet that matches the structure of a hexEye */
+	unsigned char spawn(s_HexEye* eye, s_HexEyeNet* sn); /*this eye should have exactly the same structure as the eye used to initialize the sNet
+													  the net should have the same structure as the eye, (web however is not currently connected)
+													  Each node in the net links down to 7 nodes in the net layer beneath it (except for the bottom)
+													  The hex of each node is the corresponding eye hex
+													  For all levels: eye num hexes = num of net nodes
+													  hanging nodes from lowest net level are set in the init */
+protected:
+	/*not owned*/
+	HexEye* m_genHexEye;
+	/*owned*/
+	int  m_numBottomPlates_to_be_connected;
+
+	unsigned char genNet(s_HexEyeNet* sn);
+	unsigned char connTopNetToEye(s_HexEyeNet* sn, s_HexEye* eye);
+	unsigned char connBotNetToEye(s_HexEyeNet* sn, s_HexEye* eye); /**/
+
+};
+class sEyeFNet : public sNet { /* generates fully connected nets, base for nnets*/
+public:
+	sEyeFNet();
+	~sEyeFNet();
+
+	unsigned char init(HexEye* eye, 
+		int nLev/*total levels including top and bottom*/, 
+		int numInnerLevNodes[]/*array of length nLev-2*/, 
+		int numBottomPlates_to_be_connected=1);
+
+	unsigned char spawn(s_HexEye* eye, s_EyeFNet* sn);/*spawns a fully connected net where again the structure is as set by m_nLev and m_numLevNodes
+								                   for this net each node in the higher level links down by pointers to all the nodes in the next level down*/
+	inline int getTotalNumWs() { return m_total_num_weights; }
+	inline int getTotalNumNodes() { return m_total_num_nodes; }
+	inline int getTotalNumBottomNodes() { return m_numLevNodes[m_nLev - 1]; }
+
+	inline int getTotalNumWBs() { return m_total_num_weights + m_total_num_nodes; }
+	int dumpWBsChain(s_Net* sn, float ws[]);/*dumps all the weights and bs into the ws array starting from
+											   the first node on top layer and going down through the layers of the net*/
+	inline int dumpWBsChainRef(float ws[]) { return dumpWBsChain(&m_refNet, ws); }
+	bool importWBsChain(s_Net* sn, float wbs[], int len_wbs);/*imports the same as dumped, the chain has the order of all weights per node
+																followed by the b for node then on to the next node
+																this starts at level 0 and goes on*/
+	int dumpOWeightLinksChain(s_Net* sn, float os[], int loc_lev[], int loc_i[]);/*each element in this chain corresponds at the index level to a w o's are duplicated and top o is not dumped
+																	oloc_lev contains level of o, oloc_i contains plate index of node*/
+	int dumpOsChain(s_Net* sn, float os[]);/*dumps the o's */
+	int dumpOsChainLoc(s_Net* sn, s_2pt_i os[]);/*used for debuging dumps the loc relative to the hex eye if available, for not available 0,0*/
+	inline int dumpOsChainLocRef(s_2pt_i os[]) { return dumpOsChainLoc(&m_refNet, os); }
+	int dumpOsLinksChain(s_Net* sn, int loc_lev[], int loc_i[]);/*dumps just the o's in order but with the level info*/
+	bool dumpWBsOChainMatch(s_Net* sn, int oloc_i[], int wblen);/*takes array of len WBs and for each w finds the index of the corresponding lower o in the o chain*/
+
+protected:
+	/*not owned*/
+	HexEye* m_genHexEye;
+	/*owned*/
+	int m_numBottomPlates_to_be_connected;
+
+	s_EyeFNet m_refNet;/*net that is created during init and can be used in functions to calculate various dimentions*/
+	int   m_total_num_weights;/*total number of weights for all levels*/
+	int   m_total_num_nodes;/*total number of nodes and also equivalently total number of offset constants for all levels*/
+
+	unsigned char genNet(s_EyeFNet* sn);/*generates the fully connected net*/
+	unsigned char connDownNet(s_Net* sn);/* fully connected links
+											links each lev/plate to lower plate such that each high node links to all low nodes
+	                                        lower nodes are in same order as their indexes on the plate*/
+
+	unsigned char connTopNetToEye(s_EyeFNet* sn, s_HexEye* eye);
+	unsigned char connBotNetToEye(s_EyeFNet* sn, s_HexEye* eye); /*connects the hanging nodes to the bottom plate nodes of the hex eye,
+																   all connections are done in the same order
+																  each numBottomPlates_.. block of hanging nodes in sequence is connected to the same
+																  hex eye node. The start of the block index increases by numBottomPlates.. and the 
+																  next hex eye node is selected for connection untill all 
+																  (numBottomPlates...)* (num bottom hex eye nodes) hanging nodes are connected */
+
+	unsigned char initSetNumWeightsAndNodes();
+	unsigned char getNumWeightsAndNodesPerEyeLevel(int level, int& total_num_weights, int& total_num_nds);
+
 };
 
 
