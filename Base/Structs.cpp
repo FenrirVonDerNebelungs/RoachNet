@@ -123,7 +123,7 @@ s_Hex::s_Hex(const s_Hex& other) {
 s_Hex::~s_Hex() {
 	;
 }
-unsigned char s_Hex::init(long plate_index) {
+unsigned char s_Hex::init(long plate_index, int numHanging) {
 	x = -1.f;
 	y = -1.f;
 	i = -1;
@@ -132,10 +132,10 @@ unsigned char s_Hex::init(long plate_index) {
 	thislink = plate_index;
 	for (int ii = 0; ii < 6; ii++)
 		web[ii] = NULL;
-	return s_Node::init(7);
+	return s_Node::init(numHanging);
 }
 unsigned char s_Hex::init(const s_Hex* other) {
-	unsigned char err = init(other->thislink);
+	unsigned char err = init(other->thislink, other->N);
 	if (err != ECODE_OK)
 		return err;
 	copy(other);
@@ -152,14 +152,14 @@ void s_Hex::release() {
 s_Hex& s_Hex::operator=(const s_Hex& other) {
 	if (this == &other)
 		return *this;
-	this->i = i;
-	this->j = j;
+	s_Node::operator=(other);
+	this->i = other.i;
+	this->j = other.j;
 	for (int ii = 0; ii < 6; ii++)
 		this->web[ii] = other.web[ii];
 	for (int ii = 0; ii < 3; ii++) {
 		this->rgb[ii] = other.rgb[ii];
 	}
-	s_Node::operator=(other);
 	return *this;
 }
 void s_Hex::copy(const s_Hex* other) {
@@ -171,6 +171,7 @@ void s_Hex::copy(const s_Hex* other) {
 	for (int ii = 0; ii < 3; ii++)
 		this->rgb[ii] = other->rgb[ii];
 }
+
 unsigned char s_lunHex::init(long plate_index) {
 	unsigned char err=s_Hex::init(plate_index);
 	if (err != ECODE_OK)
@@ -340,7 +341,7 @@ s_HexPlate::s_HexPlate() :height(0), width(0), Rhex(0.f), RShex(0.f), Shex(0.f) 
 s_HexPlate::~s_HexPlate() {
 	;
 }
-unsigned char s_HexPlate::init(long nNodes) {
+unsigned char s_HexPlate::init(long nNodes, int numHanging) {
 	genHexU_0();
 	unsigned char err=s_Plate::init(nNodes);
 	if (err != ECODE_OK)
@@ -349,7 +350,7 @@ unsigned char s_HexPlate::init(long nNodes) {
 		nodes[ii] = new s_Hex;
 		if (nodes[ii] == NULL)
 			return ECODE_FAIL;
-		((s_Hex*)nodes[ii])->init(N);
+		((s_Hex*)nodes[ii])->init(N, numHanging);
 		N++;
 	}
 	return ECODE_OK;
@@ -404,7 +405,7 @@ unsigned char s_HexPlate::initFixDownTarget(const s_HexPlate* other) {
 		s_Hex* this_hex = this->get(ii);
 		const s_Hex* other_hex = other->getConst(ii);
 		this_hex->nodes[0] = (s_Node*)other_hex;
-		for (int i_hanging = 1; i_hanging < this_hex->N; i_hanging++) {/*this will always be 6 since s_Hex always spawns with  7 hanging nodes*/
+		for (int i_hanging = 1; i_hanging < this_hex->N; i_hanging++) {
 			this_hex->nodes[i_hanging] = (s_Hex*)other_hex->web[i_hanging - 1];
 		}
 	}

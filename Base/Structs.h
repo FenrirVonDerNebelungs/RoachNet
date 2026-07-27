@@ -46,7 +46,7 @@ public:
 	s_Hex(const s_Hex& other);
 	~s_Hex();
 
-	virtual unsigned char init(long plate_index);
+	virtual unsigned char init(long plate_index, int numHanging=7);
 	virtual unsigned char init(const s_Hex* other);
 	virtual void          release();
 	s_Hex& operator=(const s_Hex& other);
@@ -59,10 +59,10 @@ public:
 	long i;
 	long j;
 
-	s_Node*  web[6];/*web will always be initialized to 6 pointers*/
+	s_Node* web[6];/*web will always be initialized to 6 pointers*/
 
 	float rgb[3];
-private:
+protected:
 	void copy(const s_Hex* other);
 };
 class s_lunHex : public s_Hex {/*special hex that also contains enough info to run a fast simple net*/
@@ -125,14 +125,13 @@ protected:
 namespace n_Plate {
 	unsigned char fixStackedPlateLinks(s_Plate* topP, s_Plate* botP);
 }
-
 class s_HexPlate : public s_Plate{
 public:
 	s_HexPlate();
 	~s_HexPlate();
 
-	unsigned char         init(long nNodes);/*s_Hex nodes are created by this*/
-	virtual unsigned char init(const s_HexPlate* other);/*down connections will still point to wherever the original pointed, the web is fixed however*/
+	unsigned char         init(long nNodes, int numHanging=7);/*s_Hex nodes are created by this*/
+	unsigned char init(const s_HexPlate* other);/*down connections will still point to wherever the original pointed, the web is fixed however*/
 	virtual unsigned char initFixDownTarget(const s_HexPlate* other);/*same as above but fixes the downlinks to the s_HexPlate "other" with each top pointed to 
 	                                                                   7 down 0 in the middle and then the 6 around following the web direction*/
 	void                  initRs(float inRhex);
@@ -176,6 +175,7 @@ namespace n_HexPlate {
 	//long xyToHexi(const s_2pt& xy);
 }
 
+/** classes below may be replaced or deleted later **/
 class s_HexBasePlate : public s_HexPlate {
 public:
 	s_HexBasePlate();
