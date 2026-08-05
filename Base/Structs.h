@@ -31,6 +31,7 @@ public:
 
 	long thislink; /* prob 64 bit*/
 	s_Node** nodes;/*lower nodes*//* prob 64 bit*/
+	float** w;/*weights for lower nodes*/
 	int N; /* prob 32 bit */
 
 	float o;/*used as colset flag for hex nodes*/

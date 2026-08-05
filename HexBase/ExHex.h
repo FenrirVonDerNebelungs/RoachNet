@@ -5,8 +5,8 @@
 #ifndef HEXSTACK_H
 #include "HexStack.h"
 #endif
-#ifndef HEXROOT_H
-#include "HexRoot.h"
+#ifndef HEXBASE_H
+#include "HexBase.h"
 #endif
 
 class ExHex : public Base {
@@ -17,8 +17,8 @@ public:
 	unsigned char init(HexStack* stack, int numHanging);
 	void release();
 
-	unsigned char spawn(s_HexPlate* plate);
-	void despawn(s_HexPlate* plate);
+	unsigned char spawn(s_rtHexPlate* plate);
+	void despawn(s_rtHexPlate* plate);
 
 protected:
 	HexStack* m_stack;
@@ -26,9 +26,9 @@ protected:
 	long m_numExHexes;
 	long m_numNodes;
 
-	unsigned char copyBasePlateWeave(/*const*/ s_HexPlate* base, s_HexPlate* exPlate);
-	unsigned char weaveExHexes(s_HexPlate* plate);
-	unsigned char weaveRoundExHexes(s_HexPlate* plate);
+	unsigned char copyBasePlateWeave(/*const*/ s_HexPlate* base, s_rtHexPlate* exPlate);
+	unsigned char weaveExHexes(s_rtHexPlate* plate);
+	unsigned char weaveRoundExHexes(s_rtHexPlate* plate);
 };
 
 #endif

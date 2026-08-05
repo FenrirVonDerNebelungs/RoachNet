@@ -5,8 +5,10 @@ s_Node::s_Node():x(0.f),y(0.f),thislink(-1),nodes(NULL),N(0),o(0.f)
 	;
 }
 s_Node::s_Node(const s_Node& other) {
-	if(other.N_mem>=1)
+	if (other.N_mem >= 1) {
 		this->nodes = new s_Node * [other.N_mem];
+		this->w = new float* [other.N_mem];
+	}
 	this->N_mem = other.N_mem;
 	copy(&other);
 }
@@ -21,11 +23,14 @@ unsigned char s_Node::init(int nNodes) {
 		return ECODE_OK;
 	}
 	nodes = new s_Node * [nNodes];
-	if (nodes == NULL)
+	w = new float* [nNodes];
+	if (nodes == NULL || w==NULL)
 		return ECODE_FAIL;
 	N_mem = nNodes;
-	for (int ii = 0; ii < N_mem; ii++)
+	for (int ii = 0; ii < N_mem; ii++) {
 		nodes[ii] = NULL;
+		w[ii] = 0.f;
+	}
 	N = 0;
 	return ECODE_OK;
 }
@@ -42,6 +47,9 @@ void s_Node::release() {
 		delete[]nodes;
 	}
 	nodes = NULL;
+	if(w!=NULL)
+		delete[]w;
+	w = NULL;
 	N_mem = 0;
 	N = 0;
 }
@@ -86,6 +94,7 @@ s_Node& s_Node::operator=(const s_Node& other) {
 	if (this->N_mem == other.N_mem) {
 		for (int ii = 0; ii < this->N_mem; ii++) {
 			this->nodes[ii] = other.nodes[ii];
+			this->w[ii] = other.w[ii];
 		}
 		this->N = other.N;
 	}
@@ -99,8 +108,10 @@ void s_Node::copy(const s_Node* other) {
 		for (int ii = 0; ii < this->N_mem; ii++)
 			this->nodes[ii] = NULL;
 		this->N = other->N;
-		for (int ii = 0; ii < this->N; ii++)
+		for (int ii = 0; ii < this->N; ii++) {
 			this->nodes[ii] = other->nodes[ii];
+			this->w[ii] = other->w[ii];
+		}
 	}
 	this->o = other->o;
 }
