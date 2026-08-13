@@ -61,6 +61,7 @@ public:
 
 	inline long getBaseWidth() { return m_baseWidth; }
 	inline long getBaseHeight() { return m_baseHeight; }
+	float getNumHexesLongDim(int N_level=-1);
 
 	int getNumEdgeHexes(int i_level);
 	inline int getNumEdgeHexesBottom() { return getNumEdgeHexes(m_N_levels - 1); }

@@ -20,6 +20,10 @@ public:
 	unsigned char spawn(s_rtHexPlate* plate);
 	void despawn(s_rtHexPlate* plate);
 
+	inline long getNumCoreHexes() { return m_numNodes - m_numExHexes; }
+	inline long getNumHexes() { return m_numNodes; }
+	inline int getNumHanging() { return m_numHanging; }
+
 protected:
 	HexStack* m_stack;
 	int m_numHanging;

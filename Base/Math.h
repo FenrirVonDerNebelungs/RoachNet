@@ -105,6 +105,7 @@ namespace vecMath {
 	float dist(const Tup3& v1, const Tup3& v2);
 	float dot(const s_2pt& v1, const s_2pt& v2);
 	s_2pt mul(float a, const s_2pt& vec);
+	void mul(float a, s_2pt& vec);
 	s_2pt perpUR(s_2pt& vec);
 	s_2pt perpUL(s_2pt& vec);
 	void  setBasis(float angRad, s_2pt& basisU0, s_2pt& basisU1);

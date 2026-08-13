@@ -10,8 +10,8 @@ namespace n_HexRect {
 	float tangR(float r) { return r * sqrtf(3.f) / 2.f; }
 
 	int minSpan(float minCovered_width, float r);
-	int minSpanEven(float minCovered_width, float r) {
-		int tryNumSpan = minSpan(minCovered_width, r); if (tryNumSpan % 2 != 0) tryNumSpan++; return tryNumSpan;
+	int minSpanOdd(float minCovered_width, float r) {
+		int tryNumSpan = minSpan(minCovered_width, r); if (tryNumSpan % 2 == 0) tryNumSpan++; return tryNumSpan;
 	}
 	int minLines(float minCovered_height, float r);
 	int minLinesOdd(float minCovered_height, float r) {

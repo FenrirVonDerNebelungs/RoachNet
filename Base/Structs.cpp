@@ -7,7 +7,7 @@ s_Node::s_Node():x(0.f),y(0.f),thislink(-1),nodes(NULL),N(0),o(0.f)
 s_Node::s_Node(const s_Node& other) {
 	if (other.N_mem >= 1) {
 		this->nodes = new s_Node * [other.N_mem];
-		this->w = new float* [other.N_mem];
+		this->w = new float[other.N_mem];
 	}
 	this->N_mem = other.N_mem;
 	copy(&other);
@@ -23,7 +23,7 @@ unsigned char s_Node::init(int nNodes) {
 		return ECODE_OK;
 	}
 	nodes = new s_Node * [nNodes];
-	w = new float* [nNodes];
+	w = new float[nNodes];
 	if (nodes == NULL || w==NULL)
 		return ECODE_FAIL;
 	N_mem = nNodes;
@@ -635,40 +635,4 @@ unsigned char s_nPlate::setHexes(s_HexPlate* hex_plate) {
 		((s_nNode*)nodes[ii])->hex = (s_Hex*)hex_plate->nodes[ii];
 	}
 	return ECODE_OK;
-}
-s_HexPlateLayer::s_HexPlateLayer() :p(NULL), N(0), N_mem(0) { ; }
-s_HexPlateLayer::~s_HexPlateLayer() { ; }
-unsigned char s_HexPlateLayer::init(int Nplates) {
-	p = new s_HexPlate * [Nplates];
-	if (p == NULL)
-		return ECODE_FAIL;
-	for (int ii = 0; ii < Nplates; ii++)
-		p[ii] = NULL;
-	N_mem = Nplates;
-	N = 0;
-	return ECODE_OK;
-}
-unsigned char s_HexPlateLayer::init(const s_HexPlateLayer* pl) {
-	if (pl->p == NULL)
-		return ECODE_ABORT;
-	int Nplates = pl->N;
-	unsigned char errc = init(Nplates);
-	if (errc != ECODE_OK)
-		return errc;
-	for (int ii = 0; ii < Nplates; ii++) {
-		if (pl->p[ii] == NULL)
-			return ECODE_ABORT;
-		errc = this->p[ii]->init(pl->p[ii]);
-		if (errc != ECODE_OK)
-			return ECODE_FAIL;
-	}
-	return ECODE_OK;
-}
-void s_HexPlateLayer::release() {
-	if (p != NULL) {
-		delete[] p;
-	}
-	p = NULL;
-	N_mem = 0;
-	N = 0;
 }

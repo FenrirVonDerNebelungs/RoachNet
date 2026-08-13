@@ -24,6 +24,7 @@ int n_HexBase::Web_dir(s_Hex* hex1, s_Hex* hex2) {
 	}
 	return -1;
 }
+
 bool n_HexBase::stichHexes(s_Hex* hex1, s_Hex* hex2, int web_i1) {
 	if (hex1 == NULL || hex2 == NULL)
 		return false;
@@ -95,7 +96,29 @@ bool n_HexBase::weaveSharedHexNeighbors(/*const*/ s_Hex* commonHexNode, s_Hex* h
 	stichHexes(hex1, hex2, web_hex1ToHex2);
 	return Common;
 }
-
+bool n_HexBase::copyWeave(s_HexPlate* sewnPlate, s_HexPlate* loosePlate) {
+	if (sewnPlate == NULL || loosePlate == NULL)
+		return false;
+	if (sewnPlate->N < loosePlate->N)
+		return false;
+	for (long hex_i = 0; hex_i < loosePlate->N; hex_i++) {
+		s_Hex* looseHex = loosePlate->get(hex_i);
+		s_Hex* sewnHex = sewnPlate->get(hex_i);
+		if (looseHex == NULL || sewnHex == NULL)
+			return false;
+		for (int web_i = 0; web_i < 6; web_i++) {
+			s_Hex* sewnWebHex = sewnHex->getWeb(web_i);
+			if (sewnWebHex != NULL) {
+				long sewnWebHexIndex = sewnWebHex->thislink;
+				if (sewnWebHexIndex >= 0 && sewnWebHexIndex < loosePlate->N) {
+					s_Hex* looseWebHex = loosePlate->get(sewnWebHexIndex);
+					looseHex->setWeb(looseWebHex, web_i);
+				}
+			}
+		}
+	}
+	return true;
+}
 bool n_HexBase::computeVecHexDistances(s_rtHexPlate* plate, int center_index) {
 	s_rtHex* startHex = plate->get(center_index);
 	for (int i = 0; i < 3; i++)
@@ -149,41 +172,3 @@ s_2pt n_HexBase::Loc(const s_rtHex* hex, const s_2pt hexU[], const float r) {
 	return loc;
 }
 
-bool n_HexBase::rootTwisted(s_rtHexPlate* topPlate, /*const*/ s_rtHexPlate* basePlate, float radang, float sigma) {
-	if (topPlate == NULL || basePlate == NULL)
-		return false;
-	if (topPlate->N <1)
-		return false;
-	
-	for (long hex_i = 0; hex_i < topPlate->N; hex_i++) {
-		s_rtHex* topHex = topPlate->get(hex_i);
-		s_2pt topLoc = n_HexBase::Loc(topHex, topPlate->hexU, topPlate->Rhex);
-		for(long lohex_i=0; lohex_i<basePlate->N; lohex_i++) {
-			s_rtHex* baseHex = basePlate->getConst(lohex_i);
-			if (baseHex == NULL)
-				return false;
-			s_2pt baseLoc = n_HexBase::Loc(baseHex, basePlate->hexU, basePlate->Rhex);
-			float dr = vecMath::dist(topLoc, baseLoc);
-
-		}
-		s_rtHex* baseHex = basePlate->getConst(hex_i);
-		if (topHex == NULL || baseHex == NULL)
-			return false;
-		float dv[3];
-		for (int i = 0; i < 3; i++)
-			dv[i] = (float)baseHex->getDv(i);
-		float r = sqrtf(dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2]);
-		float theta = atan2f(dv[1], dv[0]);
-		float phi = acosf(dv[2] / r);
-		float new_theta = theta + radang * expf(-r * r / (2.f * sigma * sigma));
-		float new_phi = phi + radang * expf(-r * r / (2.f * sigma * sigma));
-		float new_dv0 = r * sinf(new_phi) * cosf(new_theta);
-		float new_dv1 = r * sinf(new_phi) * sinf(new_theta);
-		float new_dv2 = r * cosf(new_phi);
-		topHex->setDv(0, (int)new_dv0);
-		topHex->setDv(1, (int)new_dv1);
-		topHex->setDv(2, (int)new_dv2);
-		topHex->setLocSetFlag(true);
-	}
-	return true;
-}

@@ -31,7 +31,7 @@ public:
 
 	long thislink; /* prob 64 bit*/
 	s_Node** nodes;/*lower nodes*//* prob 64 bit*/
-	float** w;/*weights for lower nodes*/
+	float* w;/*weights for lower nodes*/
 	int N; /* prob 32 bit */
 
 	float o;/*used as colset flag for hex nodes*/
@@ -39,29 +39,6 @@ public:
 protected:
 	virtual void copy(const s_Node* other);
 	int N_mem;/*lenght of nodes pointer array in memory*/
-};
-
-
-class s_nNode : public s_Node {/*nnet node*/
-public:
-	s_nNode();
-	~s_nNode();
-
-	unsigned char init(int nNodes);
-	unsigned char init(const s_nNode* other);
-	void          release();
-	void          reset();
-	s_nNode& operator=(const s_nNode& other);
-	inline s_nNode* getHanging(int node_i) { return (s_nNode*)this->nodes[node_i]; }
-	inline void setHanging(s_nNode* nd, int node_i) { this->nodes[node_i] = nd; }
-
-
-	s_Hex* hex;/*hex node this NNet node  is attached to if such is linked*/
-
-	float* w;/*w will have the length of nodes, N */
-	float b;
-private:
-	void copy(const s_nNode* other);
 };
 
 class s_Plate {
@@ -85,100 +62,30 @@ protected:
 	long N_mem;
 	virtual void reset();
 };
-
 namespace n_Plate {
 	unsigned char fixStackedPlateLinks(s_Plate* topP, s_Plate* botP);
 }
-
-namespace n_HexPlate {
-
-
-	bool indexChainRoot(s_HexPlate* root, s_HexPlate* base, s_Hex* root_first_node, s_Hex* base_first_node, long hex_start_i, long hex_end_i);/*hex_start_i corresponds to the index of root_first_node, hex_end_i is one beyond what will be set*/
-	int getWebDir(s_Hex* start_nd, s_Hex* end_nd, int& web_start_i);
-
-	s_Hex* connLineStackedPlates(s_Hex* nd_hi, s_Hex* nd_lo, int next_web_i);/* puts the low nodes in a line along the direction
-																			    determined by nex_web_i into nodes[0] of the hexes of the hi plate
-																				returns last hi node at the end of the line of hi nodes */
-	int turnCornerStackedPlates(s_Hex** nd_hi, s_Hex** nd_lo, int next_web_i, int fwd_web_i=0, int rev_web_i=3);/* turns around a corner for at the end of a
-																						     line in a web linked hex mesh
-																							 returns the new direction and fills
-																							 the hi/low node ptrs with next pair of hexes*/
-	long countNumHexesInLine(long start_i, int dir_web_i, s_HexPlate* o); /*counts the number of hexes in line moving in the web direction defined by dir_web_i from start_i including start_ in the number*/
-	unsigned char pool2init(s_HexPlate* o, s_HexPlate* pool);/*creates a new hexPlate from the original, o, hexplate with the new plate reduced by a factor of 2
-															     each of the new down links points to the 7 hexes on the o plate that the new plate is above*/
-	//long xyToHexi(const s_2pt& xy);
-}
-
-/** classes below may be replaced or deleted later **/
-class s_HexBasePlate : public s_HexPlate {
+/*
+class s_nNode : public s_Node {
 public:
-	s_HexBasePlate();
-	~s_HexBasePlate();
+	s_nNode();
+	~s_nNode();
 
-	unsigned char init(const s_HexBasePlate* other);
-
-	unsigned char initRowStart(long rowN);
-	void          releaseRowStart();
-
-	long  N_wHex;
-	long  N_hHex;
-
-
-	/*for fast scan xy to plate loc for square plate configuration*/
-	s_2pt* RowStart; /*xy position of the first hex in each row*/
-	s_2pt_i* RowStart_is;/* index in the hex array of the row start, and number in row*/
-	long   Row_N;
-	float  Col_d;/*seperation between columns 2/3 * R */
-	float  Row_d;/*seperation between rows 2*RS */
-protected:
-	void reset();
-};
-namespace n_HexBasePlate {
-	unsigned char initHexBasePlate_from_HexPlate(s_HexBasePlate* p);
-	unsigned char pool2init(s_HexBasePlate* o, s_HexBasePlate* pool);
-}
-
-class s_nPlate : public s_Plate {
-public:
-	s_nPlate() :num_hanging(0) {;}
-	~s_nPlate() { ; }
-	unsigned char init(long nNodes) { return s_Plate::init(nNodes); }
-	unsigned char init(long nNodes, int nLowerNodes);/*Initializes the plate with nodes it owns */
-	unsigned char init(const s_nPlate* other);
-	unsigned char init(s_HexPlate* hex_plate, int nLowerNodes);/*initializes a plate with the dimensions of the hex plate
-															  and with the nodes set to the hex plate nodes
-															  nodes of this plate are owned by this plate */
-	/*release is same as for s_Plate, since s_Plate releases and deletes non-null nodes*/
-
-	unsigned char setHexes(s_HexPlate* hex_plate);/*requires hex plate to have the same dimensions as this plate,
-												  sets all nNodes of this plate to the hex nodes of the hex plate*/
-	inline void set(long indx, s_nNode* nd) { this->nodes[indx] = (s_Node*)nd; }
-	inline void set(int indx, s_nNode* nd) { this->nodes[indx] = (s_Node*)nd; }
-	inline s_nNode* get(long indx) { return (s_nNode*)this->nodes[indx]; }
-	inline s_nNode* getConst(long indx) const { return (s_nNode*)this->nodes[indx]; }
-	inline int getNumHanging() const{ return num_hanging; }
-private:
-	int num_hanging;
-};
-
-class s_HexPlateLayer {
-public:
-	s_HexPlateLayer();
-	~s_HexPlateLayer();
-	unsigned char init(int Nplates);/*just initializes the pointers for s_HexPlate and sets N_mem*/
-	unsigned char init(const s_HexPlateLayer* pl);
+	unsigned char init(int nNodes);
+	unsigned char init(const s_nNode* other);
 	void          release();
-	virtual inline s_HexPlate* get(int indx) { return p[indx]; }
-	inline int getNmem() { return N_mem; }
-	s_HexPlate** p;
-	int N;
-protected:
-	int N_mem;
+	void          reset();
+	s_nNode& operator=(const s_nNode& other);
+	inline s_nNode* getHanging(int node_i) { return (s_nNode*)this->nodes[node_i]; }
+	inline void setHanging(s_nNode* nd, int node_i) { this->nodes[node_i] = nd; }
+
+
+	s_Hex* hex;
+
+	float b;
+private:
+	void copy(const s_nNode* other);
 };
-class s_HexBasePlateLayer : public s_HexPlateLayer {
-public:
-	s_HexBasePlateLayer() { ; }
-	~s_HexBasePlateLayer() { ; }
-	inline s_HexBasePlate* get(int indx) { return (s_HexBasePlate*)p[indx]; }
-};
+*/
+
 #endif

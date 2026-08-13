@@ -117,6 +117,14 @@ int HexStack::getNumEdgeHexes(int i_level) {
 	}
 	return numEdgeHexes;
 }
+float HexStack::getNumHexesLongDim(int N_level) {
+	int Nlev = N_level;
+	if (N_level < 0 || N_level >= m_N_levels)
+		Nlev = m_N_levels - 1;
+	/* 1+x+x^2 +.. = (1-x^(n+1))/(1-x) */
+	float sideEx = 0.5f * (Math::powerXseries(0.5f, Nlev));/*(1/2) * (1+(1/2)+(1/2)^2+..(1/2)^N_level) */
+	return 2.0f*sideEx;
+}
 unsigned char HexStack::genNumHexesPerLevel() {
 	long N_hex = 0;
 	for (int i = 0; i < m_N_levels; i++) {
@@ -217,8 +225,8 @@ long HexStack::numHexInLevel(long N_prev, int N_index) {
 	return (long)floorf(numLevelHexes);
 }
 float HexStack::sizeOfLevel(int N_level) {
-	/* 1+x+x^2 +.. = (1-x^(n+1))/(1-x) */
-	float sideEx = 0.5f*(Math::powerXseries(0.5f, N_level));/*(1/2) * (1+(1/2)+(1/2)^2+..(1/2)^N_level) */
+	float sideEx = getNumHexesLongDim(N_level);
+	sideEx /= 2.0f;
 	float mini_side = 0.5f * Math::power(0.5f, N_level);
 	mini_side *= (2.f/sqrt(3.f))*0.5;
 	return m_R * 2.f * sqrtf(sideEx * sideEx + mini_side * mini_side);

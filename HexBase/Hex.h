@@ -6,6 +6,10 @@
 #include "../Base/Structs.h"
 #endif
 
+namespace n_Hex {
+	void genHexU_0(s_2pt hexU[]);
+}
+
 class s_Hex : public s_Node {
 public:
 	s_Hex();
@@ -32,6 +36,7 @@ public:
 protected:
 	void copy(const s_Hex* other);
 };
+
 class s_rtHex :public s_Hex {
 public:
 	s_rtHex();
@@ -115,7 +120,18 @@ public:
 
 };
 
-namespace n_HexBase {
-	void genHexU_0(s_2pt hexU[]);
-}
+class s_HexPlateLayer {
+public:
+	s_HexPlateLayer();
+	~s_HexPlateLayer();
+	unsigned char init(int Nplates);/*just initializes the pointers for s_HexPlate and sets N_mem*/
+	unsigned char init(const s_HexPlateLayer* pl);
+	void          release();
+	virtual inline s_HexPlate* get(int indx) { return p[indx]; }
+	inline int getNmem() { return N_mem; }
+	s_HexPlate** p;
+	int N;
+protected:
+	int N_mem;
+};
 #endif

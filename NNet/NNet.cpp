@@ -1,211 +1,232 @@
 #include "NNet.h"
-
-unsigned char NNet::init(
-	float r,
-	int N_low_plates,
-	int N_nets,
-	int N_lev,
-	int N_lev_trigger
-) {
-	if (N_nets < 1)
-		return ECODE_ABORT;
-	m_NetGen = new sNet;
-	m_HexEyeGen = new HexEye;
-	m_r = r;
-	m_N_nets = N_nets;
-	m_N_lev = N_lev;
-	unsigned char err = m_HexEyeGen->init(m_r, N_lev);
-	if (IsErrFail(err))
-		return err;
-	m_N_plates = N_low_plates;
-	err |= m_NetGen->init(m_HexEyeGen, m_N_plates);
-	if (IsErrFail(err))
-		return err;
-	m_N_lev_trigger = N_lev_trigger;
-	return err;
+void n_Node_w::zero(s_Node_w& ndw) {
+	ndw.lev_i = -1;
+	ndw.nd_i = -1;
+	ndw.w = 0.f;
+	ndw.lo_i = -1;
 }
-void NNet::release() {
-	m_N_lev_trigger = 0;
-	if (m_NetGen != NULL) {
-		m_NetGen->release();
-		delete m_NetGen;
-	}
-	m_NetGen = NULL;
-	m_N_plates = 0;
-	if (m_HexEyeGen != NULL) {
-		m_HexEyeGen->release();
-		delete m_HexEyeGen;
-	}
-	m_HexEyeGen = NULL;
-	m_N_lev = 0;
-	m_N_nets = 0;
-	m_r = 0.f;
+void n_Node_w::copy(s_Node_w& newNdw, const s_Node_w& orig) {
+	newNdw.lev_i = orig.lev_i;
+	newNdw.nd_i = orig.nd_i;
+	newNdw.w = orig.w;
+	newNdw.lo_i = orig.lo_i;
 }
 
-unsigned char NNet::spawn(s_CNets* nets) {
-	if (nets == NULL)
-		return ECODE_ABORT;
-	unsigned char err = nets->init(m_N_nets);
-	if (Err(err))
-		return err;
-	nets->eye = new s_HexEye;
-	err = m_HexEyeGen->spawn(nets->eye);
-	if (Err(err))
-		return err;
-	for (int i_net = 0; i_net < m_N_nets; i_net++) {
-		nets->net[i_net] = new s_Net;
-		err = m_NetGen->spawn(nets->net[i_net], nets->eye);
-		if (Err(err))
-			return err;
-	}
-	err = importFile(nets);
-	if (IsErrFail(err))
-		return err;
-	if(IsAbort(err))
-		err=preSetWeights(nets);
-	return err;
+s_nNode::s_nNode() : b(0.f) {
+	;
 }
-void NNet::despawn(s_CNets* nets) {
-	if (nets == NULL)
-		return;
-	if (m_HexEyeGen == NULL || m_NetGen == NULL)
-		return;
-	for (int i_net = 0; i_net < m_N_nets; i_net++) {
-		if (nets->net[i_net] != NULL) {
-			m_NetGen->despawn(nets->net[i_net]);
-			delete nets->net[i_net];
-		}
-		nets->net[i_net] = NULL;
-	}
-	if (nets->eye != NULL) {
-		m_HexEyeGen->despawn(nets->eye);
-		delete nets->eye;
-	}
-	nets->eye = NULL;
-	nets->release();
+s_nNode::~s_nNode() {
+	;
 }
-void NNet::setOneHexExDim() {
-	float r_half = m_r / 2.f;
-	float rs = sqrtf(3.f) / 2.f;
-	rs *= m_r;
-	float sideEx = 0.f;
-	if(m_N_lev>=1)
-		sideEx= Math::powerXseries(0.5f, m_N_lev - 1);
-	sideEx *= rs;
-	sideEx += (3.f * rs);
-	m_footprint = sqrtf(sideEx * sideEx + r_half * r_half);
+unsigned char s_nNode::init(int nNodes) {
+	b = 0.f;
+	return s_Node::init(nNodes);
+}
+unsigned char s_nNode::init(const s_nNode* other) {
+	this->b = other->b;
+	return s_Node::init((const s_Node*)other);
+}
+s_nNode& s_nNode::operator=(const s_nNode& other) {
+	copy(&other);
+}
+void s_nNode::copy(const s_nNode* other) {
+	s_Node::copy((const s_Node*)other);
+	this->b = other->b;
 }
 
-void NNet::setExDim(float rEx) {
-	if (m_N_lev < 1) {
-		m_footprint = 0.f;
-	}
-	/* find the size of the lowest level of the eye down to the CENTER of the lowest hex on the lowest hex pattern*/
-	float sideEx = Math::powerXseries(0.5f, m_N_lev - 1);/* 1 + (1/2)+(1/2)^2 + .. (1/2)^(N_lev-1)*/
-	sideEx *= m_r * sqrtf(3.f) / 2.f;
-	/*side ex now extends to the middle of the lowest hex on the outer rim of the eye*/
-	/* rEx is the 'true' size of this lowest hex */
-	float net_footprint_dim = sideEx + rEx;
-	m_footprint = net_footprint_dim;
+s_nPlate::s_nPlate() {
+	;
 }
-unsigned char NNet::preSetWeights(s_CNets* nets) {
-	if (nets == NULL)
+s_nPlate::~s_nPlate() {
+	;
+}
+unsigned char s_nPlate::init(long nNodes) {
+	return s_Plate::init(nNodes);
+}
+unsigned char s_nPlate::init(const s_nPlate* other) {
+	return s_Plate::init((const s_Plate*)other);
+}
+void s_nPlate::release() {
+	s_Plate::release();
+}
+
+s_NNet::s_NNet() : lev(NULL), N_lev(0){
+	;
+}
+s_NNet::~s_NNet() {
+	;
+}
+unsigned char s_NNet::init(int _N_lev) {
+	if (_N_lev < 1)
 		return ECODE_ABORT;
-	for (int i = 0; i < nets->N; i++) {
-		unsigned char err = preSetWeightNet(nets->net[i], nets->eye);
-		if (Err(err))
-			return err;
+	N_lev = _N_lev;
+	lev = new s_nPlate * [N_lev];
+	for (int i_lev = 0; i_lev < N_lev; i_lev++) {
+		lev[i_lev] = new s_nPlate;
 	}
 	return ECODE_OK;
 }
-unsigned char NNet::preSetWeightNet(s_Net* net, s_HexEye* eye) {
-	if (net == NULL)
+
+NNet::NNet() : m_N_lev(0), m_nodesPerLev(NULL), m_N_base(0) {
+	;
+}
+NNet::~NNet() {
+	;
+}
+unsigned char NNet::init(int N_lev, long nodesPerLev[], int N_base) {
+	if (m_N_lev < 1)
 		return ECODE_ABORT;
-	if (net->N < 1)
+	m_N_lev = N_lev;
+	m_nodesPerLev = new int[m_N_lev];
+	for (int i = 0; i < m_N_lev; i++)
+		m_nodesPerLev[i] = nodesPerLev[i];
+	m_N_base = N_base;
+}
+unsigned char NNet::spawn(s_NNet* nnet) {
+	if (nnet == NULL)
 		return ECODE_ABORT;
-	/*set the weights for the hanging*/
-	s_nPlate* netBot = net->getBottom();
-	for (int i = 0; i < netBot->N; i++) {
-		s_nNode* nd = netBot->get(i);
-		/*in this kind of net the pointers should always be non-null*/
-		for (int i_hang = 0; i_hang < nd->N; i_hang++)
-			nd->w[i_hang] = 0.f;
-		/*m_N_plates x netBot->N should be total number of hanging*/
-		for (int i_plate = 0; i_plate < m_N_plates; i_plate++) {
-			int i_assoc = i * m_N_plates + i_plate;
-			nd->w[i_assoc] = 1.f;
+	if (m_N_base < 1)
+		return ECODE_ABORT;
+	if (Err(nnet->init(m_N_lev)))
+		return ECODE_ABORT;
+	for (int i_lev = 0; i_lev < m_N_lev; i_lev++) {
+		s_nPlate* net_plate = nnet->getLev(i_lev);
+		if (Err(net_plate->init(m_nodesPerLev[i_lev])))
+			return ECODE_FAIL;
+		for (long i_node = 0; i_node < m_nodesPerLev[i_lev]; i_node++) {
+			net_plate->nodes[i_node] = new s_Node;
+			net_plate->N++;
 		}
 	}
-	/*set the weights for the connected */
-	if (net->N < 2)
-		return ECODE_OK;
-	if (eye == NULL)
-		return ECODE_ABORT;
-	if (net->N != eye->N)
-		return ECODE_FAIL;
-	for (int i_lev = 0; i_lev < (net->N-1); i_lev++) {
-		s_nPlate* topP = net->lev[i_lev];
-		s_nPlate* botP = net->lev[i_lev + 1];
-		s_HexPlate* eyeTopP = eye->get(i_lev);
-		s_HexPlate* eyeBotP = eye->get(i_lev + 1);
-		if (topP->N != eyeTopP->N)
+	for (int i_lev = 0; i_lev < (m_N_lev-1); i_lev++) {
+		s_nPlate* net_plate = nnet->getLev(i_lev);
+		for (long i_node = 0; i_node < m_nodesPerLev[i_lev]; i_node++) 
+			if(Err(net_plate->nodes[i_node]->init(m_nodesPerLev[i_lev + 1])))
+				return ECODE_FAIL;
+	}
+	s_nPlate* bot_net_plate = nnet->getLev(m_N_lev - 1);
+	for (long i_node = 0; i_node < m_nodesPerLev[m_N_lev - 1]; i_node++)
+		if (Err(bot_net_plate->nodes[i_node]->init(m_N_base)))
+			return ECODE_FAIL;
+	return weaveNet(nnet);
+}
+
+unsigned char NNet::set(s_NNet* nnet, int stream_len_w, int stream_len_bias, const s_Node_w weights[], const s_Node_w biases[]) {
+	for (int i_stream = 0; i_stream < stream_len_w; i_stream++) {
+		s_Node_w weight = weights[i_stream];	
+		if (weight.lev_i >= nnet->getNLev())
 			return ECODE_ABORT;
-		for (int i_top = 0; i_top < topP->N; i_top++) {
-			s_nNode* topNd = topP->get(i_top);
-			for (int i_hang = 0; i_hang < topNd->N; i_hang++)
-				topNd->w[i_hang] = 0.f;
-		}
-		if (botP->N != eyeBotP->N)
+		s_nPlate* net_plate = nnet->getLev(weight.lev_i);
+		if (weight.nd_i >= net_plate->N)
 			return ECODE_ABORT;
-		for (int i_top = 0; i_top < eyeTopP->N; i_top++) {
-			s_nNode* top_nd = topP->get(i_top);
-			if (top_nd->N != eyeBotP->N)
-				return ECODE_ABORT;
-			/*lower nodes from the nNode should connect to all bottom nodes in order of their indexes*/
-			s_Hex* hex_top_nd = eyeTopP->get(i_top);
-			/*find indexes of lower nodes this top node is connected to*/
-			for (int i_hex_hang = 0; i_hex_hang < hex_top_nd->N; i_hex_hang++) {
-				s_Node* hex_bot_nd = hex_top_nd->nodes[i_hex_hang];
-				long bot_plate_index = hex_bot_nd->thislink;
-				/*the bot_plate_index should be the same in both the eye plate and the net plate*/
-				/* the w's from the net plate cover and are ordered the same as the order of the nodes in the next net plate down*/
-				top_nd->w[bot_plate_index] = 1.f;
+		s_nNode* nd = net_plate->get(weight.nd_i);
+		if (weight.lo_i >= nd->N)
+			return ECODE_ABORT;
+		nd->w[weight.lo_i] = weight.w;
+	}
+	for (int i_stream = 0; i_stream < stream_len_bias; i_stream++) {
+		s_Node_w bias = biases[i_stream];
+		if (bias.lev_i >= nnet->getNLev())
+			return ECODE_ABORT;
+		s_nPlate* net_plate = nnet->getLev(bias.lev_i);
+		if (bias.nd_i >= net_plate->N)
+			return ECODE_ABORT;
+		s_nNode* nd = net_plate->get(bias.nd_i);
+		nd->setB(bias.w);
+	}
+	return ECODE_OK;
+}
+int NNet::getWeights(s_Node_w weights[]) {
+	if (m_N_lev < 1)
+		return -1;
+	int num_stream = 0;
+	for (int i_lev = 0; i_lev < (m_N_lev-1); i_lev++) {
+		for (long i_nd = 0; i_nd < m_nodesPerLev[i_lev]; i_nd++) {
+			for (long i_lo = 0; i_lo < m_nodesPerLev[i_lev + 1]; i_lo++) {
+				weights[num_stream].lev_i = i_lev;
+				weights[num_stream].nd_i = i_nd;
+				weights[num_stream].w = 0.f;
+				weights[num_stream].lo_i = i_lo;
+				num_stream++;
 			}
 		}
 	}
-	return ECODE_OK;
-}
-bool n_NNet::run(s_CNets* nets, s_HexPlateLayer* platesIn, s_HexPlateLayer* platesOut, long plate_index) {
-	if (!(rootNets(nets, platesIn, plate_index)))
-		return false;
-	runRootedNets(nets);
-	/*the number of nets nets->N must be the same as the number of plates out*/
-	for (int net_i = 0; net_i < nets->N; net_i++) {
-		s_HexPlate* plateOut = platesOut->get(net_i);
-		s_Hex* hexOut = plateOut->get(plate_index);
-		/*now extract the results of running the nets*/
-		s_Net* net = nets->net[net_i];
-		s_nPlate* netTopPlate = net->getTop();
-		s_nNode* topNode = netTopPlate->get(0);
-		float net_out = topNode->o;
-		/* now fill plate*/
-		hexOut->o = net_out;
+	for (long i_nd = 0; i_nd < m_nodesPerLev[m_N_lev - 1]; i_nd++) {
+		for (long i_lo = 0; i_lo < m_N_base; i_lo++) {
+			weights[num_stream].lev_i = m_N_lev - 1;
+			weights[num_stream].nd_i = i_nd;
+			weights[num_stream].w = 0.f;
+			weights[num_stream].lo_i = i_lo;
+			num_stream++;
+		}
 	}
-	return true;
+	return num_stream;
 }
-bool n_NNet::rootNets(s_CNets* nets, s_HexPlateLayer* platesIn, long plate_index) {
-	s_HexEye* eye = nets->eye;
-	s_HexPlate* plateIn = platesIn->get(0);
-	if ((n_HexEye::imgRoot(eye, plateIn, plate_index))!=ECODE_OK)
-		return false;
-	s_HexPlate* eyeBase = eye->getBottom();
-	for (int net_i = 0; net_i < nets->N; net_i++) {
-		n_Net::rootNNet(nets->net[net_i], eyeBase, platesIn);
+int NNet::getBiases(s_Node_w biases[]) {
+	if (m_N_lev < 1)
+		return -1;
+	int num_stream = 0;
+	for (int i_lev = 0; i_lev < m_N_lev; i_lev++) {
+		for (long i_nd = 0; i_nd < m_nodesPerLev[i_lev]; i_nd++) {
+			biases[num_stream].lev_i = i_lev;
+			biases[num_stream].nd_i = i_nd;
+			biases[num_stream].w = 0.f;
+			biases[num_stream].lo_i = -1;
+			num_stream++;
+		}
 	}
-	return true;
+
+	return num_stream;
 }
-void n_NNet::runRootedNets(s_CNnets* nets) {
-	for (int net_i = 0; net_i < nets->N; net_i++) {
-		n_Net::runRootedNNet(nets->net[net_i]);
+int NNet::getNumWeights() {
+	int total_num = 0;
+	for (int i_lev = 0; i_lev < (m_N_lev - 1); i_lev++) {
+		total_num+=m_nodesPerLev[i_lev] * m_nodesPerLev[i_lev + 1];
 	}
+	total_num += m_nodesPerLev[m_N_lev - 1] * m_N_base;
+	return total_num;
+}
+int NNet::getNumBiases() {
+	int total_num;
+	for (int i_lev = 0; i_lev < m_N_lev; i_lev++) {
+		total_num += m_nodesPerLev[i_lev];
+	}
+	return total_num;
+}
+
+unsigned char NNet::weaveNet(s_NNet* nnet) {
+	for (int i_lev = 0; i_lev < (m_N_lev - 1); i_lev++) {
+		s_nPlate* net_plate = nnet->getLev(i_lev);
+		for (long i_node = 0; i_node < net_plate->N; i_node++)
+			if (!weaveNodeToPlate(net_plate->get(i_node), nnet->getLev(i_lev + 1)))
+				return ECODE_FAIL;
+	}
+}
+bool NNet::weaveNodeToPlate(s_nNode* nd, s_nPlate* plate) {
+	for (long i_lo = 0; i_lo < plate->N; i_lo++) {
+		nd->nodes[i_lo] = plate->getNd(i_lo);
+	}
+	nd->N = plate->N;
+}
+bool n_NNet::run(s_NNet* nnet) {
+	int N_lev_max = nnet->getNLev()-1;
+	for (int i_lev = N_lev_max; i_lev >= 0; i_lev--) {
+		s_nPlate* lev = nnet->getLev(i_lev);
+		for (long i_nd = 0; i_nd < lev->N; i_nd++) {
+			s_nNode* nd = lev->get(i_nd);
+			float weighted_sum = 0.f;
+			for (int i_hang = 0; i_hang < nd->N; i_hang++) {
+				s_Node* lo_nd = nd->nodes[i_hang];
+				/*assume these are non null for speed*/
+				float outval = lo_nd->o;
+				float weighted_outval = outval * nd->w[i_hang];
+				weighted_sum += weighted_outval;
+			}
+			float nd_in = weighted_sum + nd->getB();
+			nd->o = act_func(nd_in);
+		}
+	}
+}
+float n_NNet::act_func(float nd_in) {
+	return tanh(nd_in);
 }

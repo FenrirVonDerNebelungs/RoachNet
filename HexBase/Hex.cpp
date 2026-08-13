@@ -1,5 +1,27 @@
 #include "Hex.h"
+void n_Hex::genHexU_0(s_2pt hexU[])
+{
+	float longs = sqrtf(3.f) / 2.f;
+	float shorts = 0.5f;
+	/*start with to the right*/
+	hexU[0].x0 = 1.f;
+	hexU[0].x1 = 0.f;
 
+	hexU[1].x0 = shorts;
+	hexU[1].x1 = longs;
+
+	hexU[2].x0 = -shorts;
+	hexU[2].x1 = longs;
+
+	hexU[3].x0 = -1.f;
+	hexU[3].x1 = 0.f;
+
+	hexU[4].x0 = -shorts;
+	hexU[4].x1 = -longs;
+
+	hexU[5].x0 = shorts;
+	hexU[5].x1 = -longs;
+}
 s_Hex::s_Hex() :i(-1), j(-1) {
 	for (int ii = 0; ii < 6; ii++)
 		web[ii] = NULL;
@@ -241,28 +263,41 @@ void s_HexPlate::reset() {
 	s_Plate::reset();
 }
 void s_HexPlate::genHexU_0() {
-	n_HexBase::genHexU_0(hexU);
+	n_Hex::genHexU_0(hexU);
 }
-void n_HexBase::genHexU_0(s_2pt hexU[])
-{
-	float longs = sqrtf(3.f) / 2.f;
-	float shorts = 0.5f;
-	/*start with to the right*/
-	hexU[0].x0 = 1.f;
-	hexU[0].x1 = 0.f;
-
-	hexU[1].x0 = shorts;
-	hexU[1].x1 = longs;
-
-	hexU[2].x0 = -shorts;
-	hexU[2].x1 = longs;
-
-	hexU[3].x0 = -1.f;
-	hexU[3].x1 = 0.f;
-
-	hexU[4].x0 = -shorts;
-	hexU[4].x1 = -longs;
-
-	hexU[5].x0 = shorts;
-	hexU[5].x1 = -longs;
+s_HexPlateLayer::s_HexPlateLayer() :p(NULL), N(0), N_mem(0) { ; }
+s_HexPlateLayer::~s_HexPlateLayer() { ; }
+unsigned char s_HexPlateLayer::init(int Nplates) {
+	p = new s_HexPlate * [Nplates];
+	if (p == NULL)
+		return ECODE_FAIL;
+	for (int ii = 0; ii < Nplates; ii++)
+		p[ii] = NULL;
+	N_mem = Nplates;
+	N = 0;
+	return ECODE_OK;
+}
+unsigned char s_HexPlateLayer::init(const s_HexPlateLayer* pl) {
+	if (pl->p == NULL)
+		return ECODE_ABORT;
+	int Nplates = pl->N;
+	unsigned char errc = init(Nplates);
+	if (errc != ECODE_OK)
+		return errc;
+	for (int ii = 0; ii < Nplates; ii++) {
+		if (pl->p[ii] == NULL)
+			return ECODE_ABORT;
+		errc = this->p[ii]->init(pl->p[ii]);
+		if (errc != ECODE_OK)
+			return ECODE_FAIL;
+	}
+	return ECODE_OK;
+}
+void s_HexPlateLayer::release() {
+	if (p != NULL) {
+		delete[] p;
+	}
+	p = NULL;
+	N_mem = 0;
+	N = 0;
 }

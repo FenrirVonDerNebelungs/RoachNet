@@ -280,6 +280,10 @@ namespace vecMath {
 		s_2pt v1 = { a * vec.x0, a * vec.x1 };
 		return v1;
 	}
+	void mul(float a, s_2pt& vec) {
+		vec.x0 *= a;
+		vec.x1 *= a;
+	}
 	s_2pt perpUR(s_2pt& vec) {
 		s_2pt vperp = { -vec.x1, vec.x0 };
 		return vperp;
