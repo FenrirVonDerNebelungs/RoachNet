@@ -14,16 +14,17 @@ unsigned char EyeNets::init(HexStack* hexstack, Luna* luna, int num_nets) {
 		return ECODE_ABORT;
 	m_hexStack = hexstack;
 	m_luna = luna;
-	m_numNets = 0;
+	m_numNets = num_nets;
 	m_genEyeNNet = new EyeNNet * [m_numNets];
 	for (int i = 0; i < m_numNets; i++)
 		m_genEyeNNet[i] = NULL;
 	for (int i = 0; i < m_numNets; i++) {
 		m_genEyeNNet[i] = new EyeNNet;
-		m_numNets++;
 		if (Err(m_genEyeNNet[i]->init(hexstack, luna)))
 			return ECODE_FAIL;
 	}
+	m_numWeights = m_genEyeNNet[0]->getNumWeights();
+	m_numBiases = m_genEyeNNet[0]->getNumBiases();
 	return ECODE_OK;
 }
 unsigned char EyeNets::setWB(int net_i, s_Node_w weights[], s_Node_w biases[]) {

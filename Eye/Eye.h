@@ -12,9 +12,12 @@ const float EYECORE_root_plate_buffer_factor = 1.3;
 
 class s_Eye {
 public:
-	s_HexStack* m_refHexStack;/*first hex stack in initial orientation*/
-	s_rtHexPlate* m_rootPlate;/*owned by eye*/
-	s_EyeCore** m_eyeCores;/*each attached to a twisted plate*/
+	unsigned char init(int numCores);
+	void release();
+	s_HexStack* refHexStack;/*first hex stack in initial orientation*/
+	s_rtHexPlate* rootPlate;/*owned by eye*/
+	s_EyeCore** eyeCores;/*each attached to a twisted plate*/
+	int N_Cores;
 protected:
 };
 
@@ -22,11 +25,15 @@ class Eye : Base {
 public:
 	Eye();
 	~Eye();
-	unsigned char init(HexImg* hexImg, float r, float twisted_root_radius, float sigma/*in top plate r*/, int numRot, int numStackLevels);
+	unsigned char init(HexImg* hexImg, float r, float twisted_root_radius, float sigma/*in top plate r*/, int numRot, int numCurvePatterns, int numStackLevels);
 	unsigned char setWB(int net_i, s_Node_w weights[], s_Node_w biases[]);
 	void release();
 	unsigned char spawn(s_Eye* newEye);
 	void despawn(s_Eye* eye);
+
+	inline int getNumWeights() { return m_eyeNets->getNumWeights(); }
+	inline int getNmBiases() { return m_eyeNets->getNumBiases(); }
+	inline int getNLinkedBaseOs() { return m_eyeNets->getNLinkedBaseOs(); }
 protected:
 	/*not owned*/
 	HexImg* m_hexImg;
@@ -40,15 +47,16 @@ protected:
 	EyeCore* m_eyeCore;
 
 	float m_twisted_root_radius;/* radius per hex down from twisted plate onto root plate in R of upper plate*/
-
-	float m_stack_maxDim;
-	float m_stack_ex_maxDim;/*dim of stackBasePlate*/
-	float m_eye_view_root_maxDim;/*dim of root plate*/
-	int m_numHanging_stackBasePlate;/*num hanging from twisted plate*/
+	int m_numRot;
+	float m_dAng;
+	float* m_Angs;
 
 	/*init helper*/
-	float getSizeExBase();
 	float getSizeRootBase();
 	int getNumhangingBaseToRoot();
 };
+namespace n_Eye {
+	float getSizeExBase(float hexStack_NumHexesLongDim);
+	float getSizeRootBase(float sizeExBase, float twisted_root_radius); /*dim are in terms of lowest stack plate R*/
+}
 #endif

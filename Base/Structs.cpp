@@ -116,68 +116,7 @@ void s_Node::copy(const s_Node* other) {
 	this->o = other->o;
 }
 
-s_nNode::s_nNode() :hex(NULL), w(NULL), b(0.f) {
-	;
-}
-s_nNode::~s_nNode() {
-	;
-}
 
-unsigned char s_nNode::init(int nNodes) {
-	if (w != NULL)
-		return ECODE_ABORT;
-	s_Node::init(nNodes);
-	if (N_mem >= 1) {
-		w = new float[N_mem];
-		if (w == NULL)
-			return ECODE_FAIL;
-	}
-	reset();
-	return ECODE_OK;
-}
-unsigned char s_nNode::init(const s_nNode* other) {
-	unsigned char err = init(other->N_mem);
-	copy(other);
-	return ECODE_OK;
-}
-void s_nNode::release() {
-	if (w != NULL) {
-		delete[]w;
-	}
-	w = NULL;
-	s_Node::release();
-	reset();
-}
-void s_nNode::reset() {
-	s_Node::reset();
-	hex = NULL;
-	b = 0.f;
-	if(w!=NULL)
-		for (int ii = 0; ii < N_mem; ii++)
-			w[ii] = 0.f;
-}
-s_nNode& s_nNode::operator=(const s_nNode& other) {
-	this->hex = other.hex;
-	if (other.w != NULL) {
-		if (this->N_mem == other.N_mem && this->w!=NULL) {
-			for (int ii = 0; ii < N_mem; ii++)
-				this->w[ii] = other.w[ii];
-			this->b = other.b;
-		}
-	}
-	s_Node::operator=(other);
-	return *this;
-}
-void s_nNode::copy(const s_nNode* other) {
-	s_Node::copy(other);
-	this->hex = other->hex;
-	if (other->w != NULL) {
-		for (int ii = 0; ii < N_mem; ii++) {
-			this->w[ii] = other->w[ii];
-		}
-	}
-	this->b = other->b;
-}
 
 s_Plate::s_Plate() :nodes(NULL), N(0), N_mem(0) {
 	;

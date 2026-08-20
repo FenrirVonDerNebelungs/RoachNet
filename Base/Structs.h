@@ -65,27 +65,4 @@ protected:
 namespace n_Plate {
 	unsigned char fixStackedPlateLinks(s_Plate* topP, s_Plate* botP);
 }
-/*
-class s_nNode : public s_Node {
-public:
-	s_nNode();
-	~s_nNode();
-
-	unsigned char init(int nNodes);
-	unsigned char init(const s_nNode* other);
-	void          release();
-	void          reset();
-	s_nNode& operator=(const s_nNode& other);
-	inline s_nNode* getHanging(int node_i) { return (s_nNode*)this->nodes[node_i]; }
-	inline void setHanging(s_nNode* nd, int node_i) { this->nodes[node_i] = nd; }
-
-
-	s_Hex* hex;
-
-	float b;
-private:
-	void copy(const s_nNode* other);
-};
-*/
-
 #endif

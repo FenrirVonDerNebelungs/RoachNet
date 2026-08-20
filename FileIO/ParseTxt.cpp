@@ -37,7 +37,9 @@ unsigned char ParseTxt::init() {
 }
 
 void ParseTxt::release() {
-	;
+	m_inFile="";
+	m_outFile = "";
+	m_header.clear();
 }
 void ParseTxt::setInFile(const string& inFile) {
 	m_inFile = inFile;

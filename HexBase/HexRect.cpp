@@ -56,6 +56,25 @@ int n_HexRect::maxLines(float max_height, float r) {
 	float numLines = (max_height - peak_point_height)/per_line_increase;
 	int numHexLines = (int)floorf(numLines);
 }
+unsigned char HexRect::init(int numHexSpanLong, int numHexLines, float r, int numHanging) {
+	m_R = r;
+	const float short_side_ratio = sqrtf(3.f) / 2.f;
+	const float peak_only_height = 1.f - 0.5f;
+	m_RS = m_R * short_side_ratio;
+	n_Hex::genHexU_0(m_U);
+	m_numSpan = numHexSpanLong;
+	m_numInnerSpan = numHexSpanLong - 1;
+	m_numLines = numHexLines;
+	m_numHanging = numHanging;
+
+	float num_minSpan_hexes = (float)m_numInnerSpan;
+	m_minWidth = num_minSpan_hexes * 2.f*m_RS;
+	float num_maxSpan_hexes = (float)m_numSpan;
+	m_maxWidth = num_maxSpan_hexes * 2.f * m_RS;
+	float inner_height_hex_lines = m_R * (1.f + 0.5f);
+	m_minHeight = inner_height_hex_lines * ((float)(m_numLines - 1)) + m_R;
+	m_maxHeight = inner_height_hex_lines * ((float)m_numLines) + m_R * peak_only_height;
+}
 unsigned char HexRect::spawn(s_HexPlate* plate) {
 	if (plate == NULL)
 		return ECODE_ABORT;

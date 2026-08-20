@@ -27,11 +27,22 @@ public:
 	~HexRect();
 
 	virtual unsigned char init(int numHexSpanLong, int numHexLines, float r=3.f, int numHanging=1);
+	virtual void release();
 
 	virtual unsigned char spawn(s_HexPlate* plate);
 	virtual void despawn(s_HexPlate* plate);
 
+	inline int getNumHexes() { return m_numHexes; }
+	inline float getRhex() { return m_R; }
+	inline float gerRShex() { return m_RS; }
+	inline s_2pt* getHexUs() { return m_U; }
+
+	inline float getMaxWidth() { return m_maxWidth; }
+	inline float getMaxHeight() { return m_maxHeight; }
 protected:
+	float m_R;
+	float m_RS;
+	s_2pt m_U[6];
 
 	int m_numSpan; /*long span*/
 	int m_numInnerSpan;
@@ -52,10 +63,10 @@ protected:
 };
 class rtHexRect :public HexRect {
 public:
-	unsigned char init(int numHexSpanLong, int numHexLines, float r = 3.f, int numHanging = 1);
+	virtual unsigned char init(int numHexSpanLong, int numHexLines, float r = 3.f, int numHanging = 1);
 
-	unsigned char spawn(s_rtHexPlate* plate); 
-	void despawn(s_rtHexPlate* plate);
+	virtual unsigned char spawn(s_rtHexPlate* plate); 
+	virtual void despawn(s_rtHexPlate* plate);
 
 	long getCenterIndex() { return m_centerIndex; }
 	bool getExactCenterIndex() { return m_exactCenterIndex; }

@@ -28,6 +28,9 @@ public:
 	unsigned char spawn(/*const*/s_HexPlateLayer* lunaPlates, s_EyeNets* eyenets);
 	void despawn(s_EyeNets* eyenets);
 
+	inline int getNumWeights() { return m_numWeights; }
+	inline int getNumBiases() { return m_numBiases; }
+	inline int getNLinkedBaseOs() { return m_genEyeNNet[0]->getNLinkedBaseOs(); }
 protected:
 	/*not owned*/
 	HexStack* m_hexStack;
@@ -36,6 +39,9 @@ protected:
 	/*owned*/
 	EyeNNet** m_genEyeNNet;
 	int m_numNets;
+
+	int m_numWeights;
+	int m_numBiases;
 
 };
 

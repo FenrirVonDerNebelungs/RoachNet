@@ -43,6 +43,8 @@ public:
 	unsigned char writeCSVHeader(std::string& headerStr);
 	unsigned char writeCSVwithSpacer(int marker_i, const s_datLine dat[], int dat_size);
 	unsigned char writeCSV(const s_datLine dat[], int dat_size);
+	unsigned char writeCSV(const s_datLine** dat, int dat_size);
+
 protected:
 	string m_inFile;
 	string m_outFile;

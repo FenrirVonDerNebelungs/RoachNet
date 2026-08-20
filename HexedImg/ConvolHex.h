@@ -12,28 +12,44 @@
 #define CONVOLHEX_IMaskRVsR 1.5f
 
 #define THREADEDCONVOL_NUMTHREADS 4
+struct s_ConvolHex {
+	Img* Mask_img;
+	float* Mask;
+	long height;
+	long width;
+	float MaskCenter_x0;
+	float MaskCenter_x1;
+	long MaskBL_offset_x0;
+	long MaskBL_offset_x1;
+};
+struct s_convKernVars {
+	unsigned char* img_pix;
+	long Img_height;
+	long Img_width;
+	long Img_bpp;
+	long Img_maxIndex;
+
+
+	long hex_index;
+	long num_Hex;
+
+	s_Node** outHex;
+};
+
 class ConvolHex {
 public:
 	ConvolHex();
 	~ConvolHex();
-	unsigned char init(Img* iimg, s_Node* hex[], float Rhex, float sigmaVsR=CONVOLHEX_sigmaVsR, float IMaskRVsR=CONVOLHEX_IMaskRVsR);/*used by HexImg, this and the func below need to be merged: a.k.a. this one should be removed at some point*/
 	unsigned char init(Img* iimg, float Rhex, float sigmaVsR = CONVOLHEX_sigmaVsR, float IMaskRVsR = CONVOLHEX_IMaskRVsR);/*init for version that uses threaded, right now used by HexEyeImg*/
 	void release();
-	inline void update(Img* iimg) { m_img = iimg; }
-	unsigned char convulToHex(int col_i);
 
-	inline s_2pt_i& getIMaskBL_offset() { return m_IMaskBL_offset; }
-	inline long getMaskHeight() { return m_IMask->getHeight(); }
-	inline long getMaskWidth() { return m_IMask->getWidth(); }
-	inline float* getMaskF() { return m_IMaskF; }
+	inline s_ConvolHex getMask() { return m_Mask; }
 protected:
 	/*not owned*/
-	Img*   m_img;
-	s_Node** m_hex;
+	Img*   m_img;/*must have correct dimensions*/
 	/*owned*/
 	/*integration to fill hex with col, convulution*/
-	Img* m_IMask;
-	float* m_IMaskF;
+	s_ConvolHex m_Mask;
 
 	float m_Rhex;
 
@@ -44,8 +60,6 @@ protected:
 	float  m_gaussNorm;/*1/sigma*sqrt(2pi)*/
 	float  m_gaussExpConst;/*2*sigma^2*/
 	float  m_IMaskR;
-	s_2pt  m_IMaskCenter;
-	s_2pt_i m_IMaskBL_offset;
 
 	/* helpers to init */
 	unsigned char genIMask();
@@ -53,35 +67,12 @@ protected:
 	float calcGaussian(s_2pt& pt);
 	/**helpers to convolsion **/
 
-	unsigned char convulMaskToHex(int col_i);/*uses the gausian with all three cols to set hex to single col*//*only one of the two convul functions will generally be used*/
-	//unsigned char convulThreshtoHex(int col_i);/*  */
-	/****                     ****/
-	bool isIMaskInside(long hi, long hj);/*hi and hj represent the coords of the BL (or UL depending on y axis orientation)*/
-	inline s_rgba convToRGBA(float r, float g, float b){ return imgMath::convToRGBA(r, g, b); }
-	inline s_rgb  convToRGB(float r, float g, float b){ return imgMath::convToRGB(r, g, b); }
-	/**                                   **/
-
-	/*                                */
 };
+namespace n_ConvolHex {
+	bool convulMaskToHex(const Img* img, const s_ConvolHex& Mask, const s_2pt_i& hex_loc, float rgb[]);/*uses the gausian with all three cols to set hex to single col*/
+	void convulMaskToHex(s_ConvolHex MaskVars, s_convKernVars IOVars);
+}
 
-struct s_convKernVars {
-	unsigned char* img_pix;
-	long Img_height;
-	long Img_width;
-	long Img_bpp;
-	long Img_maxIndex;
-
-	float* mask_pix;/*chars divided by 255.f*/
-	long MaskBL_offsetX;
-	long MaskBL_offsetY;
-	long Mask_height;
-	long Mask_width;
-
-	long hex_index;
-
-	long num_Hex;
-	s_Node** outHex;
-};
 
 namespace threadedConvol {
 #ifndef MECVISPI_WIN
@@ -90,7 +81,5 @@ namespace threadedConvol {
 	void *runConvThread(void* IOVarsVoid);
 #endif
 }
-namespace n_Convol {
-	void convCellKernel(s_convKernVars IOVars);
-}
+
 #endif

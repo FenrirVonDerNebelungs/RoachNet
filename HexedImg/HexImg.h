@@ -4,63 +4,43 @@
 #ifndef CONVOLHEX_H
 #include "ConvolHex.h"
 #endif
+#ifndef HEX_H
+#include "../HexBase/Hex.h"
+#endif
+#ifndef HEXRECT_H
+#include "../HexBase/HexRect.h"
+#endif
 /*class takes an image from a pointer that it does NOT OWN and uses it to first create a hex structure which is stored in 
   the hex base plate
   each pass is then used to update the rgb values of the hexes in the HexBasePlate from the current image values */
-class HexImg : public Base {
+class HexImg : public rtHexRect {
 public:
 	HexImg();
 	~HexImg();
 
-	virtual unsigned char init(
+	unsigned char init(
 		Img* img,
-		s_HexBasePlate* plate, /*points to a plate object that exists but has NOT been intialized */
-		float Rhex = 9.f,//7.f,//3.f,//5.f, //3.f,  7 for debug of eye
+		float r = 9.f,//7.f,//3.f,//5.f, //3.f,  7 for debug of eye
 		float sigmaVsR = CONVOLHEX_sigmaVsR,
 		float IMaskRVsR = CONVOLHEX_IMaskRVsR
 	);
+	void release();
+	unsigned char spawn(s_rtHexPlate* plate);/*points to a plate object that exists but has NOT been intialized */
+	void despawn(s_rtHexPlate* plate);
 
-	virtual unsigned char update(Img* img);/*image must have same dimensions as original*/
-
-	virtual unsigned char run();
-	virtual void release();
-	inline Img* getImg() { return m_img; }
-
-	inline int getNHex() { return m_p->N; }
-	inline s_Hex getHexCopy(long i) { return m_p->getCopy(i); }
-	inline s_Hex* getHex(long i) { return m_p->get(i); }
-	inline s_Node** getHexes() { return m_p->nodes; }
-
-	inline float getRhex() { return m_p->Rhex; }
-	inline float getShex() { return m_p->Shex; }
-	inline float getRShex() { return m_p->RShex; }
-	inline s_2pt* getHexUs() { return m_p->hexU; }
-
+	inline s_ConvolHex getMask() { return m_Convol->getMask(); }
 protected:
 	/*not owned */
 	Img* m_img;
-	s_HexBasePlate* m_p;
 	/* owned */
 	ConvolHex* m_Convol;
 
 
-	/*construction coord variables*/
-	s_2pt   m_nWH;
-	s_2pt   m_BR;/*lower right center start*/
-	s_2pt_i m_hexMaskBL_offset;
-	float   m_toppixHex;
-
-	unsigned char genMesh();
-	/***************************************************************/
-	/* helpers to gen Mesh                                         */
-	s_2pt genMeshLoc(float Rhex, float RShex, float Shex);
-	unsigned char genMeshWeb();
-	/** helpers to helpers **/
-	unsigned char genMeshLocFromBR(float nW, float nH);
-	/****                  ***/
-	/***************************************************************/
-	unsigned char genPlateRowStart();
-	void          releasePlateRowStart();
+	s_2pt_i m_corner_start_hex_center;/*starts from top left, min X max Y*/
+	s_2pt m_corner_margin;
 };
 
+namespace n_HexImg {
+	bool update(s_rtHexPlate* plate, const Img* img, const s_ConvolHex& MaskVars);/*image must have same dimensions as original*/
+}
 #endif

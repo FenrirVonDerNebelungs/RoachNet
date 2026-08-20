@@ -56,6 +56,7 @@ void s_HexStack::release() {
 	w_col_center = 0.f;
 	w_col_aux = 0.f;
 }
+
 HexStack::HexStack() :m_r(0.f), m_R(0.f), m_N_levels(-1), m_N_hexes(NULL), m_baseWidth(0L), m_baseHeight(0L) {
 	for (int i = 0; i < 6; i++)
 		utilStruct::zero2pt(m_hexU[i]);
@@ -70,7 +71,7 @@ unsigned char HexStack::init(float r, int NLevels) {
 	m_r = r;
 	m_R = r * Math::power(2.f, (NLevels - 1)); /*figure out what largest R is r*2^(N_level-1) */
 	m_N_levels = NLevels;
-	n_HexBase::genHexU_0(m_hexU);
+	n_Hex::genHexU_0(m_hexU);
 	m_N_hexes = new long[m_N_levels];
 	if (Err(genNumHexesPerLevel()))
 		return ECODE_FAIL;
@@ -374,169 +375,5 @@ int HexStack::foundInAr(s_2pt_i ar[], int n, int val) {
 	return -1;
 }
 
-unsigned char n_HexEye::imgRoot(s_HexStack* eye, s_HexPlate* pImg, long center_i) {
-	/*assume that center_i is inside of hex map*/
-	s_HexPlate* bottom_lev = eye->getBottom();
 
-	int next_web_i = 0;
-	s_Hex* eye_nd = bottom_lev->get(0);/* zero is the center of the plate node */
-	s_Hex* plt_nd = pImg->get(center_i);
-	bool fullRoot = true;
-	do {
-		eye_nd = n_HexPlate::connLineStackedPlates(eye_nd, plt_nd, next_web_i);
-		if (eye_nd != NULL)
-			next_web_i = n_HexPlate::turnCornerStackedPlates(&eye_nd, &plt_nd, next_web_i, 0, 3);/*this resets the eye_nd pointer and plt_nd pointer to the next line*/
-		else {
-			next_web_i = -2;
-			break;
-		}
-	} while (next_web_i >= 0);
-	if (next_web_i < -1)
-		fullRoot = false;
 
-	next_web_i = 3;
-	eye_nd = bottom_lev->get(0);
-	plt_nd = pImg->get(center_i);
-	do {
-		eye_nd = n_HexPlate::connLineStackedPlates(eye_nd, plt_nd, next_web_i);
-		if (eye_nd != NULL)
-			next_web_i = n_HexPlate::turnCornerStackedPlates(&eye_nd, &plt_nd, next_web_i, 3, 0);
-		else {
-			next_web_i = -2;
-			break;
-		}
-	} while (next_web_i >= 0);
-
-	if (next_web_i < -1 || !fullRoot)
-		return ECODE_ABORT;
-	return ECODE_OK;
-}
-
-bool n_HexEye::check_imgRoot(s_HexEye* eye, s_HexPlate* pImg) {
-	if (eye == NULL || pImg==NULL)
-		return false;
-	if (eye->N < 1)
-		return false;
-	if (pImg->N < 1)
-		return false;
-	s_HexPlate* bottom_lev = eye->getBottom();
-	float eye_RDiff = HEXEYE_RDIFFTOL * bottom_lev->Rhex;
-	float eye_Rmax = eye_RDiff + bottom_lev->Rhex;
-	float eye_Rmin = bottom_lev->Rhex - eye_RDiff;
-	if (pImg->Rhex > eye_Rmax || pImg->Rhex < eye_Rmin)
-		return false;
-	return true;
-}
-unsigned char n_HexEye::imgRootL2(s_HexEye* eye, s_HexPlate* pImg, long center_i) {
-	/*assume that center_i is inside of hex map*/
-	s_HexPlate* bottom_lev = eye->getBottom();
-
-	s_Hex* eye_nd = bottom_lev->get(0);/* zero is the center of the plate node */
-	s_Hex* plt_nd = pImg->get(center_i);
-	bool fullRoot = true;
-	/*connect the middle node of the eye to the plate node*/
-	eye_nd->nodes[0] = (s_Node*)plt_nd;
-	/*there should be 7 lower nodes, and the middle lower node should be connected by the web to the rest*/
-	/*go around the middle node*/
-	for (int i = 0; i < 6; i++) {
-		s_Node* eye_web_nd = eye_nd->web[i];
-		s_Node* plt_web_nd = plt_nd->web[i];
-		eye_web_nd->nodes[0] = plt_web_nd;
-		if (plt_web_nd == NULL) fullRoot = false;
-	}
-	if (!fullRoot) return ECODE_ABORT;
-	return ECODE_OK;
-}
-bool n_HexEye::check_imgRootL2(s_HexEye* eye, s_HexPlate* pImg) {
-	if (!check_imgRoot(eye, pImg))
-		return false;
-	if (eye->N != 2)
-		return false;
-	return true;
-}
-
-unsigned char n_HexEye::updateCol(s_HexEye* eye) {
-	int max_lev_i = eye->N-2;
-	if (max_lev_i < 0)
-		return ECODE_ABORT;
-	for (int i_lev = max_lev_i; i_lev >= 0; i_lev--) {
-		if( (runEyeLevel(eye, i_lev))!=ECODE_OK )
-			return ECODE_FAIL;
-	}
-	return ECODE_OK;
-}
-
-unsigned char n_HexEye::rootUnderEyeHex(s_HexEye* eye, const s_HexEye* overEye, const int over_lev_i, const int over_hex_i) {
-	s_Hex* overHex = overEye->lev[over_lev_i]->get(over_hex_i);
-	int trace_lev_N = eye->N - 1;
-	long* down_i_trace = new long[trace_lev_N];
-	for (int i_tr = 0; i_tr < trace_lev_N; i_tr++) {
-		down_i_trace[i_tr] = 0L;
-	}
-	/*zero the bottom of the eye that is being set*/
-	for (long i_bot = 0L; i_bot < eye->getBottom()->N; i_bot++) {
-		eye->getBottom()->get(i_bot)->nodes[0] = NULL;
-	}
-	/*fill bottom of trace*/
-	s_Hex* tr_hex = eye->get(0)->get(0L);
-	s_Hex* over_tr_hex = overHex;
-	bool continue_trace = true;
-	do {
-		continue_trace = recursiveTraceEyeHexDown(tr_hex, over_tr_hex, trace_lev_N, down_i_trace);
-	} while (continue_trace);
-	return ECODE_OK;
-}
-bool n_HexEye::recursiveTraceEyeHexDown(s_Hex* tr_hex, s_Hex* over_tr_hex, int trace_level_N, long down_i_trace[]){
-	int i_lev = 0;
-	for (i_lev = 0; i_lev < trace_level_N; i_lev++) {/*chase the hexes down the trace*/
-		s_Hex* tr_down_hex = (s_Hex*)tr_hex->nodes[down_i_trace[i_lev]];
-		s_Hex* over_tr_down_hex = (s_Hex*)over_tr_hex->nodes[down_i_trace[i_lev]];
-		tr_hex = tr_down_hex;
-		over_tr_hex = over_tr_down_hex;
-		if (over_tr_hex == NULL)/*the over hex didn't have enough levels or extended off to where it wasn't connected*/
-			return false;
-	}
-	tr_hex->nodes[0] = (s_Node*)over_tr_hex;/*set the hex at the base of the trace*/
-	/*move the trace over to the next hex*/
-	i_lev = trace_level_N - 1;
-	down_i_trace[i_lev] += 1;
-	while (i_lev >= 1 && down_i_trace[i_lev] >= 7) {
-		down_i_trace[i_lev] = 0;
-		i_lev -= 1;
-		down_i_trace[i_lev] += 1;
-	}
-	bool continue_trace = true;
-	if (i_lev == 0 && down_i_trace[i_lev]>=7)/*if i_lev leaves the above loop as 0 it means the loop was trying to move over for a trace that extends above
-		             the highest hex. This means the loop has filled the traces at the base for all the hexes and is now done*/
-		continue_trace = false;
-	return continue_trace;
-}
-unsigned char n_HexEye::runEyeLevel(s_HexEye* seye, int i_level) {
-	s_highConvKernVars IOVars;
-	IOVars.w_center = seye->w_col_center;
-	IOVars.w_aux = seye->w_col_aux;
-	IOVars.hex_index = 0L;
-	IOVars.num_Hex = seye->get(i_level)->N;
-	IOVars.Hexes = seye->get(i_level)->getNodes();
-	return runEyeLevelSingleThread(IOVars);
-}
-unsigned char n_HexEye::runEyeLevelSingleThread(s_highConvKernVars IOVars) {
-	for (long i_hex = 0; i_hex < IOVars.num_Hex; i_hex++) {
-		convHexKernel(IOVars);
-		IOVars.hex_index++;
-	}
-	return ECODE_OK;
-}
-void n_HexEye::convHexKernel(s_highConvKernVars IOVars) {
-	s_Hex* topHex = (s_Hex*)IOVars.Hexes[IOVars.hex_index];
-	float rgb[3];
-	for (int i_rgb = 0; i_rgb < 3; i_rgb++)
-		rgb[i_rgb] = IOVars.w_center * ((s_Hex*)topHex->nodes[0])->rgb[i_rgb];
-	for (int i_low = 1; i_low < topHex->N; i_low++) {
-		for (int i_rgb = 0; i_rgb < 3; i_rgb++)
-			rgb[i_rgb] = rgb[i_rgb] + IOVars.w_aux * ((s_Hex*)topHex->nodes[i_low])->rgb[i_rgb];
-	}
-	for (int i_rgb = 0; i_rgb < 3; i_rgb++)
-		topHex->rgb[i_rgb] = rgb[i_rgb];
-	return;
-}

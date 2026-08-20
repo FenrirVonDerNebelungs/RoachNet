@@ -58,7 +58,7 @@ public:
 	inline long getColorMode() const { return m_colorMode; }
 	inline long getMaxIndex() const { return m_colorMode * m_pixSize; }
 
-	bool inImg(long x_i, long y_i);
+	bool inImg(long x_i, long y_i) const;
 
 protected:
 	bool m_notOwned;

@@ -409,7 +409,7 @@ void Img::clearToChar(unsigned char cval) {
 		m_img[i] = cval;
 	}
 }
-bool Img::inImg(long x_i, long y_i)
+bool Img::inImg(long x_i, long y_i) const
 {
 	if (x_i < 0 || y_i < 0)
 		return false;
