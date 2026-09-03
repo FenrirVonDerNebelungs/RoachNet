@@ -149,8 +149,46 @@ unsigned char TrainEye::getXsForStamp(int stamp_num, s_datLine* sigOut[], s_datL
 	}
 	return ECODE_OK;
 }
-unsigned char genSigSeq(const Img* sigImg, const int N, Img imgs[]) {
-	
+unsigned char TrainEye::genSigSeq(const Img* sigImg, const int N, Img imgs[]) {
+	if (N < 1)
+		return ECODE_FAIL;
+	s_2pt* offsets = new s_2pt[N];
+	s_2pt center = { 0.f, 0.f };
+	float* dAngs = new float[N];
+	for (int i = 0; i < N; i++) {
+		offsets[i] = Math::randGaus2D(center, m_gaussDxySig);
+		dAngs[i] = Math::randGausJitterAng(m_gaussDAngSig, 0.f);
+		imgs[i].init(*sigImg);
+	}
+	for (int i = 0; i < N; i++) {
+		imgs[i].rotate(dAngs[i]);
+		imgs[i].translate(offsets[i]);
+	}
+	delete[] dAngs;
+	delete[] offsets;
+	return ECODE_OK;
+}
+unsigned char TrainEye::genBakSeq(const Img* bakImg, const int N, Img imgs[]) {
+	if (N < 1)
+		return ECODE_FAIL;
+	s_2pt* offsets = new s_2pt[N];
+	s_2pt center = { 0.f, 0.f };
+	float* dAngs = new float[N];
+	for (int i = 0; i < N; i++) {
+		offsets[i] = Math::randGaus2D(center, m_gaussDxyBak);
+		dAngs[i] = Math::randAng();
+		imgs[i].init(*bakImg);
+	}
+	for (int i = 0; i < N; i++) {
+		imgs[i].rotate(dAngs[i]);
+		imgs[i].translate(offsets[i]);
+	}
+	delete[] dAngs;
+	delete[] offsets;
+	return ECODE_OK;
+}
+unsigned char genLunaOut(const Img& img, s_datLine* Xs) {
+
 }
 std::string TrainEye::constructFilePath(int fnum) {
 	std::string filePath = g_baseDir + "/" + g_imgFile;
