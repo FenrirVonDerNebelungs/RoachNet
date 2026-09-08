@@ -32,8 +32,9 @@ public:
 	void despawn(s_Eye* eye);
 
 	inline int getNumWeights() { return m_eyeNets->getNumWeights(); }
-	inline int getNmBiases() { return m_eyeNets->getNumBiases(); }
+	inline int getNumBiases() { return m_eyeNets->getNumBiases(); }
 	inline int getNLinkedBaseOs() { return m_eyeNets->getNLinkedBaseOs(); }
+	inline int getNSingleNodeBaseOs() { return m_eyeNets->getNSingleNodeBaseOs(); }
 protected:
 	/*not owned*/
 	HexImg* m_hexImg;
@@ -58,5 +59,6 @@ protected:
 namespace n_Eye {
 	float getSizeExBase(float hexStack_NumHexesLongDim);
 	float getSizeRootBase(float sizeExBase, float twisted_root_radius); /*dim are in terms of lowest stack plate R*/
+	bool run(s_Eye* eye, const Img* img, const s_ConvolHex& maskVars);
 }
 #endif

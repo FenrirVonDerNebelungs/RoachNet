@@ -32,3 +32,15 @@ unsigned char EyeCore::spawn(float angRad, s_rtHexPlate* basePlate, s_EyeCore* e
 	eyeCore->nets = new s_EyeNets;
 	return m_genEyeNet->spawn(eyeCore->lunaPlates, eyeCore->nets);
 }
+
+bool n_EyeCore::run(s_EyeCore* eyeCore) {
+	if (eyeCore == NULL)
+		return false;
+	if (!n_TwistedPlate::run(eyeCore->twistedPlate))
+		return false;
+	if (!n_Luna::run(eyeCore->lunaPlates))
+		return false;
+	if (!n_EyeNets::run(eyeCore->nets))
+		return false;
+	return true;
+}

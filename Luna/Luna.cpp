@@ -91,3 +91,32 @@ void Luna::genHalfLunaPattern(int lunRot, s_Node& topNd) {
 		topNd.w[i]= LUNA_WSCALE * (topNd.w[i]);
 	topNd.N = LUNA_NUM_FOOTS;
 }
+bool n_Luna::run(s_HexPlateLayer* lunaPlates) {
+	for(int i_luna=0; i_luna<lunaPlates->N; i_luna++){
+		s_HexPlate* lunaPlate = lunaPlates->get(i_luna);
+		if(lunaPlate==NULL)
+			return false;
+		if(!n_Luna::runPlate(lunaPlate))
+			return false;
+	}
+	return true;
+}
+bool n_Luna::runPlate(s_HexPlate* lunaPlate) {
+	for(long i_hex=0; i_hex<lunaPlate->N; i_hex++){
+		s_Hex* hex = lunaPlate->get(i_hex);
+		if(hex==NULL)
+			return false;
+		float sum=0.f;
+		for(int i_hang=0; i_hang<hex->N; i_hang++){
+			s_Node* hangNd = hex->getHanging(i_hang);
+			if(hangNd==NULL)
+				return false;
+			sum += hex->w[i_hang] * hangNd->o;
+		}
+		hex->o = luna_act_func(sum);
+	}
+	return true;
+}
+float n_Luna::luna_act_func(float nd_in) {
+	return nd_in;
+}

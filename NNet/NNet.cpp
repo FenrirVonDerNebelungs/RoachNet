@@ -162,6 +162,25 @@ int NNet::getWeights(s_Node_w weights[]) {
 	}
 	return num_stream;
 }
+int n_NNet::getLinkedBaseOs(const s_NNet* nnet, s_Node_w os[]) {
+	if (nnet == NULL || nnet->getNLev()<1 || os == NULL)
+		return -1;
+	int os_i = 0;
+	int lowest_lev = nnet->getNLev() - 1;
+	const s_nPlate* bot_plate = nnet->getBotLevConst();
+	for (long i_nd = 0; i_nd < bot_plate->N; i_nd++) {
+		const s_nNode* nd = bot_plate->getConst(i_nd);
+		for (long i_lo = 0; i_lo < nd->N; i_lo++) {
+			const s_nNode* lo_nd = nd->getHangingConst(i_lo);
+			os[os_i].lev_i = lowest_lev;
+			os[os_i].nd_i = i_nd;
+			os[os_i].w = lo_nd->o;
+			os[os_i].lo_i = i_lo;
+			os_i++;
+		}
+	}
+	return os_i;
+}
 int NNet::getBiases(s_Node_w biases[]) {
 	if (m_N_lev < 1)
 		return -1;

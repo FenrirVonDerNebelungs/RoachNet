@@ -29,7 +29,8 @@ public:
 	void release();
 
 	s_nNode& operator=(const s_nNode& other);
-	inline s_nNode* getHanging(int node_i) { return (s_nNode*)nodes[node_i]; }
+	inline s_nNode* getHanging(int node_i) const { return (s_nNode*)nodes[node_i]; }
+	inline const s_nNode* getHangingConst(int node_i) const { return (s_nNode*)nodes[node_i]; }
 	inline void setHanging(s_nNode* nd, int node_i) { this->nodes[node_i] = nd; }
 
 	inline float getB() { return b; }
@@ -63,6 +64,7 @@ public:
 
 	inline s_nPlate* getLev(int i_lev) { return lev[i_lev]; }
 	inline const s_nPlate* getLevConst(int i_lev) const { return lev[i_lev]; }
+	inline const s_nPlate* getBotLevConst() const { return lev[N_lev - 1]; }
 	inline int getNLev() const { return N_lev; }
 protected:
 	s_nPlate** lev;
@@ -104,6 +106,8 @@ protected:
 namespace n_NNet {
 	bool run(s_NNet* net);
 	float act_func(float nd_in);
+
+	int getLinkedBaseOs(const s_NNet* nnet, s_Node_w os[]);/*used for training, get the O values of the nodes that the hanging links are attached to*/
 }
 
 #endif

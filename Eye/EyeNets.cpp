@@ -44,3 +44,12 @@ unsigned char EyeNets::spawn(s_HexPlateLayer* lunaPlates, s_EyeNets* eyenets) {
 			return ECODE_FAIL;
 	}
 }
+
+bool n_EyeNets::run(s_EyeNets* eyenets) {
+	for (int i_net = 0; i_net < eyenets->N; i_net++) {
+		s_NNet* net = eyenets->nets[i_net];
+		if (!n_NNet::run(net))
+			return false;
+	}
+	return true;
+}

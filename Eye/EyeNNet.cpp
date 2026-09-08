@@ -53,24 +53,7 @@ unsigned char EyeNNet::spawn(s_HexPlateLayer* lunaPlates, s_NNet* nnet) {
 }
 
 int EyeNNet::getLinkedBaseOs(const s_NNet* nnet, s_Node_w os[]) {
-	if (nnet == NULL || nnet->getNLev() < 1)
-		return -1;
-	int num_stream = 0;
-	int lev_i = m_N_lev - 1;
-	const s_nPlate* net_plate = nnet->getLevConst(lev_i);
-	for (long i_nd = 0; i_nd < net_plate->N; i_nd++) {
-		const s_nNode* nd = net_plate->getConst(i_nd);
-		for (int i_lo = 0; i_lo < nd->N; i_lo++) {
-			const s_Node* lo_nd = nd->nodes[i_lo];
-			float o = lo_nd->o;
-			os[num_stream].lev_i = lev_i;
-			os[num_stream].nd_i = i_nd;
-			os[num_stream].w = o;
-			os[num_stream].lo_i = i_lo;
-			num_stream++;
-		}
-	}
-	return num_stream;
+	return n_NNet::getLinkedBaseOs(nnet, os);
 }
 
 

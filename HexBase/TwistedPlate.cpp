@@ -102,3 +102,19 @@ bool TwistedPlate::reorderArraysByDist(float* dists, int* indices, int n) {
 	}
 	return true;
 }
+
+bool n_TwistedPlate::run(s_rtHexPlate* twistedPlate) {
+	for(long hex_i = 0; hex_i < twistedPlate->N; hex_i++) {
+		s_rtHex* hex = twistedPlate->get(hex_i);
+		if(hex == NULL)
+			return false;
+		float sum_w = 0.f;
+		for (int i = 0; i < hex->N; i++) {
+			s_rtHex* base_hex = hex->getHanging(i);
+			float base_o = base_hex->o;
+			sum_w += hex->w[i] * base_o;
+		}
+		hex->o = sum_w;
+	}
+	return true;
+}

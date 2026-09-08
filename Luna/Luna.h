@@ -37,5 +37,9 @@ private:
 	void genHalfLunaPattern(int lunRot, s_Node& topNd);
 };
 
-
+namespace n_Luna {
+	bool run(s_HexPlateLayer* lunaPlates);
+	bool runPlate(s_HexPlate* lunaPlate);
+	float luna_act_func(float nd_in);
+}
 #endif

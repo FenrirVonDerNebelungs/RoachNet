@@ -91,7 +91,17 @@ unsigned char ParseTxt::writeCSV(const s_datLine dat[], int dat_size) {
 	ffile.close();
 	return ECODE_OK;
 }
-
+unsigned char ParseTxt::writeCSV(s_datLine** DatLines, int dat_size) {
+	ofstream ffile;
+	ffile.open(m_outFile);
+	for (int i = 0; i < dat_size; i++) {
+		const s_datLine* pDatLine = DatLines[i];
+		string line = dumpFloatLine(pDatLine->v, pDatLine->n);
+		ffile << line << '\n';
+	}
+	ffile.close();
+	return ECODE_OK;
+}
 string ParseTxt::dumpFloatLine(const float* ar, int len) {
 	string outStr = "";
 	for (int i = 0; i < len; i++) {

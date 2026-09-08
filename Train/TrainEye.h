@@ -24,12 +24,13 @@ const int g_numStampsIn = 10;/*needs to be reset*/
 const long g_colorMode = 3L;
 
 const std::string g_baseDir = "../Dat";
-const std::string g_keyFile = "keys";
-const std::string g_masterFile = "masterKey";
+//const std::string g_keyFile = "keys";
+//const std::string g_masterFile = "masterKey";
 const std::string g_keySuffix = ".txt";
 const std::string g_imgFile = "imgf";
 const std::string g_imgFileSuffix = ".tga";
 
+const std::string g_keyOutFile = "lunaOutKey";
 const std::string g_sigOutFile = "sigout";
 const std::string g_bakOutFile = "bakout";
 const std::string g_outSuffix = ".txt";
@@ -55,6 +56,7 @@ public:
 	unsigned char run();
 protected:
 	CTargaImage* m_tgaImg;
+	ParseTxt* m_parseTxt_Key;
 	ParseTxt* m_parseTxt_Sig;
 	ParseTxt* m_parseTxt_Bak;
 	Img** m_Imgs;
@@ -65,6 +67,7 @@ protected:
 	Eye* m_Eye;
 
 	s_rtHexPlate* m_eyeBaseImgHexedPlate;
+	s_ConvolHex m_eyeBaseConvolHexMaskVars;
 	s_Eye* m_seye;
 
 	int m_imgDim;
@@ -80,11 +83,14 @@ protected:
 	float m_sigSmearDR;
 	float m_sigSmearDAng;
 	int m_numTotSigSmears;
+	int m_numSigOut;
+	int m_numBakOut;
 	s_gaussianInt m_gaussDxySig;
 	s_gaussianInt m_gaussDAngSig;
 
 
 
+	unsigned char genKeyOutFile();
 	unsigned char readInSourceImgs();
 	unsigned char runStamp(int stamp_num);
 

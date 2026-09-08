@@ -6,6 +6,11 @@
 #include "EyeNNet.h"
 #endif
 
+struct s_EyeNet_w {
+	s_Node_w* node_ws;
+	int N_nodes;
+};
+
 class s_EyeNets {
 public:
 	s_EyeNets();
@@ -31,6 +36,7 @@ public:
 	inline int getNumWeights() { return m_numWeights; }
 	inline int getNumBiases() { return m_numBiases; }
 	inline int getNLinkedBaseOs() { return m_genEyeNNet[0]->getNLinkedBaseOs(); }
+	inline int getNSingleNodeBaseOs() { return m_genEyeNNet[0]->getNBase(); }
 protected:
 	/*not owned*/
 	HexStack* m_hexStack;
@@ -44,5 +50,10 @@ protected:
 	int m_numBiases;
 
 };
+
+namespace n_EyeNets {
+	bool run(s_EyeNets* eyenets);
+
+}
 
 #endif

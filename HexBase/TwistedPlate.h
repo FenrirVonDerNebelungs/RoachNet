@@ -26,4 +26,8 @@ protected:
 	bool rootTwisted(s_rtHexPlate* topPlate, /*const*/ s_rtHexPlate* basePlate, float radang, int numHanging, float sigma/*in actual dist*/);/*gaussian root*/
 	bool reorderArraysByDist(float* dists, int* indices, int n);
 };
+
+namespace n_TwistedPlate{
+		bool run(s_rtHexPlate* twistedPlate);
+}
 #endif

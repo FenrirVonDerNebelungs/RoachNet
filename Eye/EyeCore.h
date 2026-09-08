@@ -31,11 +31,16 @@ public:
 	void release();
 	unsigned char spawn(float angRad, /*const*/ s_rtHexPlate* basePlate, s_EyeCore* newEyeCore);
 	void despawn(s_EyeCore* eyeCore);
+
 protected:
 	/*not owned*/
 	TwistedPlate* m_twistedPlate;
 	Luna* m_luna;
 	EyeNets* m_genEyeNet;
 };
+
+namespace n_EyeCore {
+	bool run(s_EyeCore* eyeCore);
+}
 
 #endif
