@@ -22,6 +22,15 @@ namespace n_HexBase {
 	bool computeVecHexDistances(s_rtHexPlate* plate, int center_index = 0);
 	s_2pt Loc(const s_rtHex* hex, const s_2pt hexU[], const float r);/*assumes vec distances have been filled*/
 
+	bool root(s_rtHexPlate* root_plate, const s_rtHexPlate* base_plate, long base_index); /* assumes both plates have exactly the 
+	                                                       same hex size
+															roots root_plate on base plate 
+	                                                          at base plate index base_index startes at root plate index of 0*/
+	bool rootSweep(s_rtHexPlate* root_plate, const s_rtHexPlate* base_plate, long base_index, int web_dir_i); /* assumes both plates have exactly the 
+														   same hex size
+															roots root_plate on base plate 
+															  at base plate index base_index startes at root plate index of 0
+															  sweeps along the direction determined by web_dir_i  */
 }
 
 #endif

@@ -42,6 +42,10 @@ unsigned char HexImg::init(Img* img,
 	m_corner_start_hex_center.x1 = (long)ceilf(hex_Y_start);
 	if (m_corner_start_hex_center.x0 <= 0 || m_corner_start_hex_center.x1 >= m_img->getHeight())
 		return ECODE_FAIL;
+	long half_numHexes = (long)(m_numHexes/2);
+	if (m_numHexes % 2 != 0)
+		half_numHexes += 1;
+	m_center_hex_index = half_numHexes;
 	return ECODE_OK;
 }
 void HexImg::release() {

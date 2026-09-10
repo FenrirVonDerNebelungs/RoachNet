@@ -42,10 +42,12 @@ unsigned char TrainEye::init(
 	m_eyeBaseConvolHexMaskVars = m_hexImg->getMask();
 	m_Eye->init(m_hexImg, RHex, twisted_root_radius, sigma_hexImg, 1, numCurvePatterns, g_numStackLevels);
 
-	m_eyeBaseImgHexedPlate = new s_rtHexPlate;
-	m_hexImg->spawn(m_eyeBaseImgHexedPlate);
+	m_imgHexedPlate = new s_rtHexPlate;
+	m_hexImg->spawn(m_imgHexedPlate);
 	m_seye = new s_Eye;
 	m_Eye->spawn(m_seye);
+	/*root the eye in the center of the img plate*/
+	n_HexBase::root(m_seye->rootPlate, m_imgHexedPlate, m_hexImg->getCenterHexIndex());
 
 	m_imgDim = imgDim;
 	m_numLunaXs = m_Eye->getNLinkedBaseOs();
@@ -214,7 +216,8 @@ unsigned char TrainEye::genBakSeq(const Img* bakImg, const int N, Img imgs[]) {
 	return ECODE_OK;
 }
 unsigned char TrainEye::genLunaOut(const Img& img, s_datLine* Xs) {
-	n_Eye::run(m_seye, &img, m_eyeBaseConvolHexMaskVars);
+	n_HexImg::update(m_imgHexedPlate, &img, m_eyeBaseConvolHexMaskVars);
+	n_Eye::run(m_seye);
 	s_EyeCore* first_eye_core = m_seye->eyeCores[0];
 	s_EyeNets first_nets_inst = first_eye_core->nets[0];
 	s_NNet* first_nnet_inst = first_nets_inst.nets[0];

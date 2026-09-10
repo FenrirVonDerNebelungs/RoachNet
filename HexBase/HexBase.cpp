@@ -171,4 +171,45 @@ s_2pt n_HexBase::Loc(const s_rtHex* hex, const s_2pt hexU[], const float r) {
 	loc.x1 = (vec0.x1 + vec1.x1 + vec2.x1) * r;
 	return loc;
 }
+bool n_HexBase::root(s_rtHexPlate* root_plate, const s_rtHexPlate* base_plate, long base_index) {
+	if (root_plate == NULL || base_plate == NULL)
+		return false;
+	if (base_index < 0 || base_index >= base_plate->N)
+		return false;
+	int web_dir_i = 0;
+	bool root_full1 = rootSweep(root_plate, base_plate, base_index, web_dir_i);
+	web_dir_i = 3;
+	bool root_full2 = rootSweep(root_plate, base_plate, base_index, web_dir_i);
+	return (root_full1 && root_full2);
+}
 
+bool n_HexBase::rootSweep(s_rtHexPlate* root_plate, const s_rtHexPlate* base_plate, long base_index, int web_dir_i) {
+	int web_inc_i = 1;
+	s_rtHex* linked_rootHex = root_plate->get(0);
+	s_rtHex* linked_baseHex = base_plate->getConst(base_index);
+	do {
+		s_rtHex* baseHex = linked_baseHex;
+		s_rtHex* rootHex = linked_rootHex;
+		int web_i = web_dir_i;
+		linked_rootHex = rootHex->getWeb(web_i);
+		if (linked_rootHex == NULL) {
+			for (int web_cnt_i = 0; web_cnt_i < 2; web_cnt_i++) {
+				web_i += web_cnt_i;
+				linked_rootHex = rootHex->getWeb(web_i);
+				if (linked_rootHex != NULL) {
+					web_dir_i = 3;
+					web_inc_i = -web_inc_i;
+					break;
+				}
+			}
+		}
+		if (linked_rootHex != NULL) {
+			linked_baseHex = baseHex->getWeb(web_i);
+			if (linked_baseHex != NULL) {
+				linked_rootHex->setHanging((s_Node*)linked_baseHex, 0);
+			}
+		}
+
+	} while (linked_rootHex != NULL && linked_baseHex != NULL);
+	return (linked_baseHex != NULL);
+}

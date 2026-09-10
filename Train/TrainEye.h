@@ -66,7 +66,7 @@ protected:
 	HexImg* m_hexImg;
 	Eye* m_Eye;
 
-	s_rtHexPlate* m_eyeBaseImgHexedPlate;
+	s_rtHexPlate* m_imgHexedPlate;
 	s_ConvolHex m_eyeBaseConvolHexMaskVars;
 	s_Eye* m_seye;
 

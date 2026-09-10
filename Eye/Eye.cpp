@@ -103,14 +103,22 @@ float n_Eye::getSizeRootBase(float sizeExBase, float twisted_root_radius) {
 	float ex_root_radius = EYECORE_root_plate_buffer_factor * twisted_root_radius;
 	return base_long_dim_in_R + ex_root_radius;
 }
-bool n_Eye::run(s_Eye* eye, const Img* img, const s_ConvolHex& maskVars) {
+bool n_Eye::run(s_Eye* eye) {
 	if (eye == NULL)
 		return false;
-	if(!n_HexImg::update(eye->rootPlate, img, maskVars))
-		return false;
+	for (int i_root_hex = 0; i_root_hex < eye->rootPlate->N; i_root_hex++) {
+		s_rtHex* rootHex = eye->rootPlate->get(i_root_hex);
+		s_rtHex* baseHex = rootHex->getHanging(0);
+		rootHex->setRGB(baseHex->rgb);
+		rootHex->o = filter(rootHex->rgb);
+	}
 	for(int i_core=0; i_core<eye->N_Cores; i_core++){
 		if(!n_EyeCore::run(eye->eyeCores[i_core]))
 			return false;
 	}
 	return true;
+}
+float n_Eye::filter(float rgb[]) {
+	float len = sqrtf(rgb[0] * rgb[0] + rgb[1] * rgb[1] + rgb[2] * rgb[2]);
+	return len * EYCORE_max_RGB_len_inv;
 }

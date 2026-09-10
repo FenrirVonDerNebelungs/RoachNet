@@ -9,6 +9,7 @@
 #endif
 
 const float EYECORE_root_plate_buffer_factor = 1.3;
+const float EYCORE_max_RGB_len_inv = 1.f / (255.f * sqrt(3.f));
 
 class s_Eye {
 public:
@@ -59,6 +60,7 @@ protected:
 namespace n_Eye {
 	float getSizeExBase(float hexStack_NumHexesLongDim);
 	float getSizeRootBase(float sizeExBase, float twisted_root_radius); /*dim are in terms of lowest stack plate R*/
-	bool run(s_Eye* eye, const Img* img, const s_ConvolHex& maskVars);
+	bool run(s_Eye* eye); /*assumes Eye is already rooted*/
+	float filter(float rgb[]);
 }
 #endif
