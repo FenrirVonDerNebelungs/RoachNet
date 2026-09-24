@@ -33,7 +33,7 @@ public:
 	virtual void despawn(s_HexPlate* plate);
 
 	inline int getNumHexes() { return m_numHexes; }
-	inline float getRhex() { return m_R; }
+	inline float getRhex() const{ return m_R; }
 	inline float gerRShex() { return m_RS; }
 	inline s_2pt* getHexUs() { return m_U; }
 

@@ -59,7 +59,7 @@ public:
 	s_HexStack& getHexStack() { return m_refEye; }
 	s_HexStack* getHexStackPtr() { return &m_refEye; }
 
-	inline float getBottomR() { return m_r; }
+	inline float getBottomR() const { return m_r; }
 
 	inline long getBaseWidth() { return m_baseWidth; }
 	inline long getBaseHeight() { return m_baseHeight; }
@@ -69,6 +69,7 @@ public:
 	inline int getNumEdgeHexesBottom() { return getNumEdgeHexes(m_N_levels - 1); }
 
 	s_HexPlate* getBottomPlate() { return m_refEye.getBottom(); }
+	inline s_2pt* getHexUs()  { return m_hexU; }
 protected:
 	/* dimensions of eyes this HexEye will initiate */
 	float m_r;

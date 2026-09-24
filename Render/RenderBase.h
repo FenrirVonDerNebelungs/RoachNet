@@ -7,9 +7,16 @@
 #ifndef IMG_H
 #include "../Base/Img.h"
 #endif
-#ifndef COLPLATE_H
-#include "../HexedImg/ColPlate.h"
+#ifndef HEX_H
+#include "../HexBase/Hex.h"
 #endif
+#ifndef HEXRECT_H
+#include "../HexBase/HexRect.h"
+#endif
+#ifndef HEXSTACK_H
+#include "../HexBase/HexStack.h"
+#endif
+
 const s_rgb RENDERBASE_rgb_empty = { 0x00, 0x00, 0x00 };
 const float RENDERBASE_pix_max = 255.f;
 namespace n_RenderBase {
@@ -22,12 +29,14 @@ public:
 	RenderBase();
 	~RenderBase();
 
-	unsigned char init(float r, bool rgb_unit_scaled=false, bool do_grid_overlay=true, float grid_line_width=1.f);
+	virtual unsigned char init(HexRect* hexRect, bool rgb_unit_scaled = false, bool do_grid_overlay = true, float grid_line_width = 1.f);
+	virtual unsigned char init(HexStack* hexStack, bool rgb_unit_scaled = false, bool do_grid_overlay = true, float grid_line_width = 1.f);
+	virtual unsigned char init(float r, bool rgb_unit_scaled = false, bool do_grid_overlay = true, float grid_line_width = 1.f);
 	unsigned char resetR(float r);
 	void setGridOverlay(bool do_grid_overlay) { m_flag_doGridOverlay = do_grid_overlay; }
 	void setGridLineWidth(float grid_line_width) { m_grid_line_width = grid_line_width; }
 	inline void setGridCol(s_rgb& grid_col) { m_grid_col = grid_col; }
-	void release();
+	virtual void release();
 
 	unsigned char spawnHexPlateImg(s_HexPlate* plt, Img* iimg);/*image pointer must already point to an object
 									                             if image is of 0 width and height it is assumed it is not initialized 
@@ -63,7 +72,9 @@ protected:
 	unsigned char RenderHalfHexPlate_to_Img(int half_hex_web_i, s_HexPlate* plt, s_2pt_i& center, Img* iimg);
 
 	/*helpers*/
+	unsigned char InitMasks();
 	unsigned char InitMask_for_hex_dim(float r, float rs);/*r is the long radius rs is the direct short side out radius*/
+
 
 	/*helpers to helpers and base functions*/
 	unsigned char InitMask_for_hexes(s_2pt hexU[], float Rhex, float RShex);

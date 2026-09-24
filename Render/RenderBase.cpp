@@ -32,6 +32,22 @@ RenderBase::RenderBase() : m_flag_rgb_unit_scaled(false), m_flag_doGridOverlay(f
 RenderBase::~RenderBase() {
 	;
 }
+unsigned char RenderBase::init( HexRect* hexRect, bool rgb_unit_scaled, bool do_grid_overlay, float grid_line_width) {
+	if(Err(init(hexRect->getRhex(), rgb_unit_scaled, do_grid_overlay, grid_line_width)))
+		return ECODE_FAIL;
+	s_2pt* hexU = hexRect->getHexUs();
+	for (int i_web = 0; i_web < 6; i_web++)
+		m_U[i_web] = hexU[i_web];
+	return InitMasks();
+}
+unsigned char RenderBase::init(HexStack* hexStack, bool rgb_unit_scaled, bool do_grid_overlay, float grid_line_width) {
+	if(Err(init(hexStack->getBottomR(), rgb_unit_scaled, do_grid_overlay, grid_line_width)))
+		return ECODE_FAIL;
+	s_2pt* hexU = hexStack->getHexUs();
+	for (int i_web = 0; i_web < 6; i_web++)
+		m_U[i_web] = hexU[i_web];
+	return InitMasks();
+}
 unsigned char RenderBase::init(float r, bool rgb_unit_scaled, bool do_grid_overlay, float grid_line_width) {
 	if (m_hex_mask != NULL || m_hex_grid_mask != NULL)
 		return ECODE_FAIL;
@@ -50,18 +66,16 @@ unsigned char RenderBase::init(float r, bool rgb_unit_scaled, bool do_grid_overl
 		m_half_hex_masks[i_web] = new Img;
 	s_HexPlate s_dummy_hplate;
 	s_dummy_hplate.init(3);
-	for (int i_web = 0; i_web < 6; i_web++)
+	for (int i_web = 0; i_web < 6; i_web++) 
 		m_U[i_web] = s_dummy_hplate.hexU[i_web];
 	s_dummy_hplate.release();
 	m_R = r;
 	m_RS = sqrtf(3.f) / 2.f;
 	m_RS *= m_R;
-	if(Err(InitMask_for_hexes(m_U, m_R, m_RS)))
-		return ECODE_FAIL;
-	if(Err(InitHalfMasks_for_hexes(m_U, m_R, m_RS)))
-		return ECODE_FAIL;
-	return ECODE_OK;
+
+	return InitMasks();
 }
+
 unsigned char RenderBase::resetR(float r) {
 	if (m_hex_mask == NULL || m_hex_grid_mask == NULL || m_half_hex_masks == NULL)
 		return ECODE_FAIL;
@@ -157,9 +171,9 @@ bool RenderBase::IsImgInit(Img* iimg) {
 bool RenderBase::IsImgDimMatch(s_HexPlate* plt, Img* iimg) {
 	if (plt == NULL || iimg == NULL)
 		return false;
-	if (plt->width != iimg->getWidth())
+	if (plt->width <= iimg->getWidth())
 		return false;
-	if (plt->height != iimg->getHeight())
+	if (plt->height <= iimg->getHeight())
 		return false;
 	return true;
 }
@@ -194,7 +208,12 @@ unsigned char RenderBase::RenderHalfHexPlate_to_Img(int half_hex_web_i, s_HexPla
 	return ECODE_OK;
 }
 
-
+unsigned char RenderBase::InitMasks() {
+	if (Err(InitMask_for_hexes(m_U, m_R, m_RS)))
+		return ECODE_FAIL;
+	if (Err(InitHalfMasks_for_hexes(m_U, m_R, m_RS)))
+		return ECODE_FAIL;
+}
 unsigned char RenderBase::InitMask_for_hex_dim(float r, float rs) {
 	if (m_hex_mask == NULL || m_hex_grid_mask==NULL)
 		return ECODE_FAIL;

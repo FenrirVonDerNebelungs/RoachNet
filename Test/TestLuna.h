@@ -12,11 +12,11 @@
 #include "../Luna/LunaLayer.h"
 #endif
 
-class TestLuna_C : public Base {
+class TestLuna : public Base {
 
 public:
-	TestLuna_C();
-	~TestLuna_C();
+	TestLuna();
+	~TestLuna();
 
 	unsigned char init(
 		Img* baseImg,
