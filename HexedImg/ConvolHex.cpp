@@ -8,8 +8,8 @@ ConvolHex::ConvolHex():m_img(NULL), m_Rhex(0.f), m_sigmaVsR(0.f), m_IMaskRVsR(0.
 	m_Mask.width = 0L;
 	m_Mask.MaskCenter_x0 = 0.f;
 	m_Mask.MaskCenter_x1 = 0.f;
-	m_Mask.MaskBL_offset_x0 = 0.f;
-	m_Mask.MaskBL_offset_x1 = 0.f;
+	m_Mask.MaskBL_offset_x0 = 0L;
+	m_Mask.MaskBL_offset_x1 = 0L;
 }
 ConvolHex::~ConvolHex()
 {
@@ -68,7 +68,7 @@ unsigned char ConvolHex::genIMask()
 	m_Mask.MaskCenter_x0 = roundf(m_IMaskR);
 	m_Mask.MaskCenter_x1 = roundf(m_IMaskR);
 	s_2pt MaskCenter = { m_Mask.MaskCenter_x0, m_Mask.MaskCenter_x1 };
-};
+
 	s_2pt centerPt = { 0.f, 0.f };
 	float gaussMax = calcGaussian(centerPt);
 	for (int j = 0; j < sizeM; j++) {
@@ -101,6 +101,17 @@ float ConvolHex::calcGaussian(s_2pt& pt)
 	return val * m_gaussNorm;
 }
 
+void n_ConvolHex::clear(s_ConvolHex& MaskVars)
+{
+	MaskVars.Mask_img = NULL;
+	MaskVars.Mask = NULL;
+	MaskVars.height = 0L;
+	MaskVars.width = 0L;
+	MaskVars.MaskCenter_x0 = 0.f;
+	MaskVars.MaskCenter_x1 = 0.f;
+	MaskVars.MaskBL_offset_x0 = 0L;
+	MaskVars.MaskBL_offset_x1 = 0L;
+}
 bool n_ConvolHex::convulMaskToHex(const Img* img, const s_ConvolHex& Mask, const s_2pt_i& hex_loc, float rgb[])
 {
 	/*not the fastest convul*/
@@ -149,6 +160,7 @@ bool n_ConvolHex::convulMaskToHex(const Img* img, const s_ConvolHex& Mask, const
 	}
 	return true;
 }
+/*
 void n_ConvolHex::convulMaskToHex(s_ConvolHex MaskVars, s_convKernVars IOVars) {
 	long hex_i = ((s_Hex*)IOVars.outHex[IOVars.hex_index])->i;
 	long hex_j = ((s_Hex*)IOVars.outHex[IOVars.hex_index])->j;
@@ -198,7 +210,7 @@ void n_ConvolHex::convulMaskToHex(s_ConvolHex MaskVars, s_convKernVars IOVars) {
 
 	return;
 }
-
+*/
 
 namespace threadedConvol {
 #ifndef MECVISPI_WIN

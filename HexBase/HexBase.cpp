@@ -24,7 +24,26 @@ int n_HexBase::Web_dir(s_Hex* hex1, s_Hex* hex2) {
 	}
 	return -1;
 }
-
+int n_HexBase::rotateCLK(const s_Hex* hexNode, const int start_web_i) {
+	int web_i = Web_i(start_web_i);
+	for (int i = 0; i < 6; i++) {
+		const s_Hex* linkedHex = hexNode->getWebConst(web_i);
+		if (linkedHex != NULL)
+			return web_i;
+		web_i = Web_i(web_i - 1);
+	}
+	return -1;
+}
+int n_HexBase::rotateCCLK(const s_Hex* hexNode, const int start_web_i) {
+	int web_i = Web_i(start_web_i);
+	for (int i = 0; i < 6; i++) {
+		const s_Hex* linkedHex = hexNode->getWebConst(web_i);
+		if (linkedHex != NULL)
+			return web_i;
+		web_i = Web_i(web_i + 1);
+	}
+	return -1;
+}
 bool n_HexBase::stichHexes(s_Hex* hex1, s_Hex* hex2, int web_i1) {
 	if (hex1 == NULL || hex2 == NULL)
 		return false;
@@ -57,19 +76,24 @@ bool n_HexBase::weaveSharedHexToNeighbors(s_Hex* commonHex, s_Hex* hex1, s_Hex* 
 	bool Common = false;
 	for(int web_i_hex1ToCommon=0; web_i_hex1ToCommon<6; web_i_hex1ToCommon++){
 		s_Hex* nebHex1 = hex1->getWeb(web_i_hex1ToCommon);
-		if(nebHex1->thislink==commonHex->thislink){
-			for (int web_i_hex1ToHex2 = 0; web_i_hex1ToHex2 < 6; web_i_hex1ToHex2++) {
-				s_Hex* hex2Test = hex1->getWeb(web_i_hex1ToHex2);
-				if (hex2Test->thislink == hex2->thislink) {
-					bool adjoiningHexes = abs(web_i_hex1ToCommon - web_i_hex1ToHex2) == 1;
-					if (adjoiningHexes) {
-						int web_i_CommonToHex2 = 0;
-						if (web_i_hex1ToHex2 > web_i_hex1ToCommon)
-							web_i_CommonToHex2 = Web_i(web_i_hex1ToCommon + 2);
-						else
-							web_i_CommonToHex2 = Web_i(web_i_hex1ToCommon - 2);
-						stichHexes(commonHex, hex2, web_i_CommonToHex2);
-						Common = true;
+		if (nebHex1 != NULL) {
+			if (nebHex1->thislink == commonHex->thislink) {
+				for (int web_i_hex1ToHex2 = 0; web_i_hex1ToHex2 < 6; web_i_hex1ToHex2++) {
+					s_Hex* hex2Test = hex1->getWeb(web_i_hex1ToHex2);
+					if (hex2Test != NULL) {
+						if (hex2Test->thislink == hex2->thislink) {
+							bool adjoiningHexes = abs(web_i_hex1ToCommon - web_i_hex1ToHex2) == 1;
+							if (adjoiningHexes) {
+								int web_i_CommonToHex2 = 0;
+								if (web_i_hex1ToHex2 > web_i_hex1ToCommon)
+									web_i_CommonToHex2 = Web_i(web_i_hex1ToCommon + 2);
+								else
+									web_i_CommonToHex2 = Web_i(web_i_hex1ToCommon - 2);
+								stichHexes(commonHex, hex2, web_i_CommonToHex2);
+								Common = true;
+								return Common;
+							}
+						}
 					}
 				}
 			}
@@ -119,6 +143,36 @@ bool n_HexBase::copyWeave(s_HexPlate* sewnPlate, s_HexPlate* loosePlate) {
 	}
 	return true;
 }
+bool n_HexBase::reduceRtHexLoc(s_rtHex* hex) {
+	if (hex == NULL)
+		return false;
+	/*1st triangle 0, 2, 4 = 0, 2, -1 */
+	/* 2nd triangle 1, 3, 5 = 1, -0, -2 */
+	int triangle_sign = 1;
+	int min = HEXBASE_MAXRTHEXLOC;
+	int min_i = 0;
+	for (int i = 0; i < 3; i++) {
+		int abs_dv = abs(hex->getDv(i));
+		if (abs_dv < min) {
+			min = abs_dv;
+			min_i = i;
+		}
+	}
+	if (min <= 0)
+		return true;
+	if (min_i !=1 && hex->getDv(min_i) < 0)
+		triangle_sign = -1;
+	if (min_i == 1 && hex->getDv(min_i) > 0)
+		triangle_sign = -1;
+	int dv[3] = { 0,0,0 };
+	int tri_sub_mag = min * triangle_sign;
+	dv[0] = hex->getDv(0) - tri_sub_mag;
+	dv[1] = hex->getDv(1) + tri_sub_mag;
+	dv[2] = hex->getDv(2) - tri_sub_mag;
+	for (int i = 0; i < 3; i++)
+		hex->setDv(i, dv[i]);
+	return true;
+}
 bool n_HexBase::computeVecHexDistances(s_rtHexPlate* plate, int center_index) {
 	s_rtHex* startHex = plate->get(center_index);
 	for (int i = 0; i < 3; i++)
@@ -126,36 +180,52 @@ bool n_HexBase::computeVecHexDistances(s_rtHexPlate* plate, int center_index) {
 	startHex->setLocSetFlag(true);
 	bool unconnectable_found = false;
 	int plate_connection_loops = 0;
+	long hex_i_inc = 1;
+	long hex_i = 0;
 	do {
-		for (long hex_i = 0; hex_i < plate->N; hex_i++) {
+		unconnectable_found = false;
+		for (long i_loop = 0; i_loop < plate->N; i_loop++) {
 			s_rtHex* nextHex = plate->get(hex_i);
-			unconnectable_found = true;
 			if (!nextHex->getLocSetFlag()) {
+				unconnectable_found = true;
 				for (int web_i = 0; web_i < 6; web_i++) {
 					s_rtHex* adjHex = nextHex->getWeb(web_i);
 					if (adjHex != NULL) {
 						if (adjHex->getLocSetFlag()) {
-							unconnectable_found = false;
+							nextHex->copyDv(adjHex);
 							if (web_i < 3) {
-								nextHex->setDv(web_i, adjHex->getDv(web_i) + 1);
+								nextHex->incDv(web_i, -1);
 							}
 							else {
 								int rev_web_i = revWeb_i(web_i);
-								nextHex->setDv(rev_web_i, adjHex->getDv(rev_web_i) - 1);
+								nextHex->incDv(rev_web_i, 1);
 							}
 							nextHex->setLocSetFlag(true);
+							break;
 						}
 					}
 				}
+				if(!nextHex->getLocSetFlag())
+					unconnectable_found = true; /**** DEBUG****/
 			}
+			hex_i += hex_i_inc;
 		}
 		plate_connection_loops++;
+		hex_i_inc *= -1;
+		hex_i += hex_i_inc;
 	} while (unconnectable_found && plate_connection_loops <= plate->N);
 	if (unconnectable_found)
-		return ECODE_FAIL;
-	return ECODE_OK;
+		return false;
+	return true;
 }
-s_2pt n_HexBase::Loc(const s_rtHex* hex, const s_2pt hexU[], const float r) {
+bool n_HexBase::reduceVecHexDistances(s_rtHexPlate* plate) {
+	for (long i = 0; i < plate->N; i++) {
+		s_rtHex* hex = plate->get(i);
+		reduceRtHexLoc(hex);
+	}
+	return true;
+}
+s_2pt n_HexBase::Loc(const s_rtHex* hex, const s_2pt hexU[], const float RS) {
 	s_2pt loc;
 	loc.x0 = 0.f;
 	loc.x1 = 0.f;
@@ -167,26 +237,33 @@ s_2pt n_HexBase::Loc(const s_rtHex* hex, const s_2pt hexU[], const float r) {
 	s_2pt vec0 = { hexU[0].x0 * dv[0], hexU[0].x1 * dv[0] };
 	s_2pt vec1 = { hexU[1].x0 * dv[1], hexU[1].x1 * dv[1] };
 	s_2pt vec2 = { hexU[2].x0 * dv[2], hexU[2].x1 * dv[2] };
-	loc.x0 = (vec0.x0 + vec1.x0 + vec2.x0) * r;
-	loc.x1 = (vec0.x1 + vec1.x1 + vec2.x1) * r;
+	float center_dist = 2.f * RS;
+	loc.x0 = (vec0.x0 + vec1.x0 + vec2.x0) * center_dist;
+	loc.x1 = (vec0.x1 + vec1.x1 + vec2.x1) * center_dist;
 	return loc;
 }
-bool n_HexBase::root(s_rtHexPlate* root_plate, const s_rtHexPlate* base_plate, long base_index) {
+bool n_HexBase::root(s_rtHexPlate* root_plate, const s_rtHexPlate* base_plate, long root_index, long base_index) {
 	if (root_plate == NULL || base_plate == NULL)
 		return false;
 	if (base_index < 0 || base_index >= base_plate->N)
 		return false;
+	if (root_index<0 || root_index>root_plate->N)
+		return false;
 	int web_dir_i = 0;
-	bool root_full1 = rootSweep(root_plate, base_plate, base_index, web_dir_i);
+	bool root_full1 = rootSweep(root_plate, base_plate, root_index, base_index, web_dir_i);
 	web_dir_i = 3;
-	bool root_full2 = rootSweep(root_plate, base_plate, base_index, web_dir_i);
+	bool root_full2 = rootSweep(root_plate, base_plate, root_index, base_index, web_dir_i);
 	return (root_full1 && root_full2);
 }
 
-bool n_HexBase::rootSweep(s_rtHexPlate* root_plate, const s_rtHexPlate* base_plate, long base_index, int web_dir_i) {
+bool n_HexBase::rootSweep(s_rtHexPlate* root_plate, const s_rtHexPlate* base_plate, long root_index, long base_index, int web_dir_i) {
 	int web_inc_i = 1;
-	s_rtHex* linked_rootHex = root_plate->get(0);
+	s_rtHex* linked_rootHex = root_plate->get(root_index);
 	s_rtHex* linked_baseHex = base_plate->getConst(base_index);
+	if (linked_rootHex == NULL || linked_baseHex == NULL)
+		return false;
+	linked_rootHex->setHanging((s_Node*)linked_baseHex, 0);
+	linked_rootHex->N=1;
 	do {
 		s_rtHex* baseHex = linked_baseHex;
 		s_rtHex* rootHex = linked_rootHex;
@@ -194,10 +271,11 @@ bool n_HexBase::rootSweep(s_rtHexPlate* root_plate, const s_rtHexPlate* base_pla
 		linked_rootHex = rootHex->getWeb(web_i);
 		if (linked_rootHex == NULL) {
 			for (int web_cnt_i = 0; web_cnt_i < 2; web_cnt_i++) {
-				web_i += web_cnt_i;
+				web_i+=web_inc_i;
+				web_i = n_HexBase::Web_i(web_i);
 				linked_rootHex = rootHex->getWeb(web_i);
 				if (linked_rootHex != NULL) {
-					web_dir_i = 3;
+					web_dir_i = n_HexBase::Web_i(web_dir_i+3);
 					web_inc_i = -web_inc_i;
 					break;
 				}
@@ -207,6 +285,7 @@ bool n_HexBase::rootSweep(s_rtHexPlate* root_plate, const s_rtHexPlate* base_pla
 			linked_baseHex = baseHex->getWeb(web_i);
 			if (linked_baseHex != NULL) {
 				linked_rootHex->setHanging((s_Node*)linked_baseHex, 0);
+				linked_rootHex->N=1;
 			}
 		}
 

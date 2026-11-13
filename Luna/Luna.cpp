@@ -3,10 +3,11 @@
 Luna::Luna():m_exHex(NULL){ ; }
 Luna::~Luna() { ; }
 
-unsigned char Luna::init(ExHex* exHex) {
+unsigned char Luna::init(HexStack* hexStack, ExHex* exHex) {
 	unsigned char err = ECODE_OK;
-	if(exHex==NULL)
+	if(hexStack==NULL || exHex==NULL)
 		return ECODE_ABORT;
+	m_hexStack = hexStack;
 	err = genLunaPatterns();
 	if (Err(err))
 		return err;
@@ -14,6 +15,7 @@ unsigned char Luna::init(ExHex* exHex) {
 	return err;
 }
 void Luna::release() {
+	m_exHex = NULL;
 }
 unsigned char Luna::spawn(/*const*/s_HexPlate* basePlate, s_HexPlateLayer* lunPlates) {
 	if (lunPlates == NULL)
@@ -21,21 +23,37 @@ unsigned char Luna::spawn(/*const*/s_HexPlate* basePlate, s_HexPlateLayer* lunPl
 	if(Err(lunPlates->init(LUNA_NUM_LUNAS)))
 		return ECODE_FAIL;
 	for (int i_luna = 0; i_luna < LUNA_NUM_LUNAS; i_luna++) {
+		lunPlates->p[i_luna] = new s_HexPlate;
 		s_HexPlate* lunPlate = lunPlates->get(i_luna);
 		unsigned char err = spawnPlate(basePlate, i_luna, lunPlate);
 		if (Err(err))
 			return err;
 	}
+	lunPlates->N = LUNA_NUM_LUNAS;
 	return ECODE_OK;
 }
+void Luna::despawn(s_HexPlateLayer* lunPlates) {
+	if (lunPlates == NULL)
+		return;
+	for (int i_luna = 0; i_luna < LUNA_NUM_LUNAS; i_luna++) {
+		s_HexPlate* lunPlate = lunPlates->get(i_luna);
+		if (lunPlate != NULL) {
+			despawnPlate(lunPlate);
+			delete lunPlates->p[i_luna];
+		}
+		lunPlate = NULL;
+	}
+	lunPlates->release();
+}
 long Luna::getNumNodes() {
-	return m_exHex->getNumHexes();
+	return m_exHex->getNumCoreHexes();
 }
 unsigned char Luna::spawnPlate(/*const*/s_HexPlate* basePlate, int lunRot, s_HexPlate* lunPlate) {
 	if (lunPlate == NULL)
 		return ECODE_ABORT;
 	long numNodesLunaPlate = m_exHex->getNumCoreHexes();
-	if(Err(lunPlate->init(numNodesLunaPlate, LUNA_NUM_FOOTS)))
+	float r_base = basePlate->Rhex;
+	if(Err(lunPlate->init(numNodesLunaPlate, basePlate->hexU, r_base, LUNA_NUM_FOOTS))) /* NULL leads to the default Us for the hex pattern*/
 		return ECODE_FAIL;
 	n_HexBase::copyWeave(basePlate, lunPlate);
 	s_Node& lunaPat = m_lunas[lunRot];
@@ -55,7 +73,11 @@ unsigned char Luna::spawnPlate(/*const*/s_HexPlate* basePlate, int lunRot, s_Hex
 
 	return ECODE_OK;
 }
-
+void Luna::despawnPlate(s_HexPlate* lunPlate) {
+	if (lunPlate == NULL)
+		return;
+	lunPlate->release();
+}
 
 unsigned char Luna::genLunaPatterns() {
 	/*since this hexEye has only one level, the indexes of the nodes hanging from the top node should be the same as their indexes in the bottom plate*/

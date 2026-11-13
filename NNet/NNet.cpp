@@ -15,6 +15,9 @@ void n_Node_w::copy(s_Node_w& newNdw, const s_Node_w& orig) {
 s_nNode::s_nNode() : b(0.f) {
 	;
 }
+s_nNode::s_nNode(const s_nNode& other) {
+	copy(&other);
+}
 s_nNode::~s_nNode() {
 	;
 }
@@ -26,8 +29,13 @@ unsigned char s_nNode::init(const s_nNode* other) {
 	this->b = other->b;
 	return s_Node::init((const s_Node*)other);
 }
+void s_nNode::release() {
+	s_Node::release();
+	b = 0.f;
+}
 s_nNode& s_nNode::operator=(const s_nNode& other) {
 	copy(&other);
+	return *this;
 }
 void s_nNode::copy(const s_nNode* other) {
 	s_Node::copy((const s_Node*)other);
@@ -66,6 +74,19 @@ unsigned char s_NNet::init(int _N_lev) {
 	}
 	return ECODE_OK;
 }
+void s_NNet::release() {
+	if (lev != NULL) {
+		for (int i_lev = 0; i_lev < N_lev; i_lev++) {
+			if (lev[i_lev] != NULL) {
+				lev[i_lev]->release();
+				delete lev[i_lev];
+			}
+		}
+		delete[] lev;
+	}
+	lev = NULL;
+	N_lev = 0;
+}
 
 NNet::NNet() : m_N_lev(0), m_nodesPerLev(NULL), m_N_base(0) {
 	;
@@ -74,13 +95,22 @@ NNet::~NNet() {
 	;
 }
 unsigned char NNet::init(int N_lev, long nodesPerLev[], int N_base) {
-	if (m_N_lev < 1)
+	if (N_lev < 1)
 		return ECODE_ABORT;
 	m_N_lev = N_lev;
-	m_nodesPerLev = new int[m_N_lev];
+	m_nodesPerLev = new long[m_N_lev];
 	for (int i = 0; i < m_N_lev; i++)
 		m_nodesPerLev[i] = nodesPerLev[i];
 	m_N_base = N_base;
+	return ECODE_OK;
+}
+void NNet::release() {
+	if (m_nodesPerLev != NULL) {
+		delete[] m_nodesPerLev;
+		m_nodesPerLev = NULL;
+	}
+	m_N_lev = 0;
+	m_N_base = 0;
 }
 unsigned char NNet::spawn(s_NNet* nnet) {
 	if (nnet == NULL)
@@ -94,7 +124,7 @@ unsigned char NNet::spawn(s_NNet* nnet) {
 		if (Err(net_plate->init(m_nodesPerLev[i_lev])))
 			return ECODE_FAIL;
 		for (long i_node = 0; i_node < m_nodesPerLev[i_lev]; i_node++) {
-			net_plate->nodes[i_node] = new s_Node;
+			net_plate->nodes[i_node] = new s_nNode;
 			net_plate->N++;
 		}
 	}
@@ -110,8 +140,27 @@ unsigned char NNet::spawn(s_NNet* nnet) {
 			return ECODE_FAIL;
 	return weaveNet(nnet);
 }
+void NNet::despawn(s_NNet* nnet) {
+	if (nnet == NULL)
+		return;
+	for (int i_lev = 0; i_lev < nnet->getNLev(); i_lev++) {
+		s_nPlate* net_plate = nnet->getLev(i_lev);
+		if (net_plate != NULL) {
+			for (long i_node = 0; i_node < net_plate->N; i_node++) {
+				if (net_plate->nodes[i_node] != NULL) {
+					net_plate->nodes[i_node]->release();
+					delete net_plate->nodes[i_node];
+					net_plate->nodes[i_node] = NULL;
+				}
+			}
+			net_plate->release();
+		}
+	}
+	nnet->release();
+}
 
 unsigned char NNet::set(s_NNet* nnet, int stream_len_w, int stream_len_bias, const s_Node_w weights[], const s_Node_w biases[]) {
+	
 	for (int i_stream = 0; i_stream < stream_len_w; i_stream++) {
 		s_Node_w weight = weights[i_stream];	
 		if (weight.lev_i >= nnet->getNLev())
@@ -124,6 +173,7 @@ unsigned char NNet::set(s_NNet* nnet, int stream_len_w, int stream_len_bias, con
 			return ECODE_ABORT;
 		nd->w[weight.lo_i] = weight.w;
 	}
+	
 	for (int i_stream = 0; i_stream < stream_len_bias; i_stream++) {
 		s_Node_w bias = biases[i_stream];
 		if (bias.lev_i >= nnet->getNLev())
@@ -162,25 +212,6 @@ int NNet::getWeights(s_Node_w weights[]) {
 	}
 	return num_stream;
 }
-int n_NNet::getLinkedBaseOs(const s_NNet* nnet, s_Node_w os[]) {
-	if (nnet == NULL || nnet->getNLev()<1 || os == NULL)
-		return -1;
-	int os_i = 0;
-	int lowest_lev = nnet->getNLev() - 1;
-	const s_nPlate* bot_plate = nnet->getBotLevConst();
-	for (long i_nd = 0; i_nd < bot_plate->N; i_nd++) {
-		const s_nNode* nd = bot_plate->getConst(i_nd);
-		for (long i_lo = 0; i_lo < nd->N; i_lo++) {
-			const s_nNode* lo_nd = nd->getHangingConst(i_lo);
-			os[os_i].lev_i = lowest_lev;
-			os[os_i].nd_i = i_nd;
-			os[os_i].w = lo_nd->o;
-			os[os_i].lo_i = i_lo;
-			os_i++;
-		}
-	}
-	return os_i;
-}
 int NNet::getBiases(s_Node_w biases[]) {
 	if (m_N_lev < 1)
 		return -1;
@@ -200,19 +231,18 @@ int NNet::getBiases(s_Node_w biases[]) {
 int NNet::getNumWeights() {
 	int total_num = 0;
 	for (int i_lev = 0; i_lev < (m_N_lev - 1); i_lev++) {
-		total_num+=m_nodesPerLev[i_lev] * m_nodesPerLev[i_lev + 1];
+		total_num += m_nodesPerLev[i_lev] * m_nodesPerLev[i_lev + 1];
 	}
 	total_num += m_nodesPerLev[m_N_lev - 1] * m_N_base;
 	return total_num;
 }
 int NNet::getNumBiases() {
-	int total_num;
+	int total_num=0;
 	for (int i_lev = 0; i_lev < m_N_lev; i_lev++) {
 		total_num += m_nodesPerLev[i_lev];
 	}
 	return total_num;
 }
-
 unsigned char NNet::weaveNet(s_NNet* nnet) {
 	for (int i_lev = 0; i_lev < (m_N_lev - 1); i_lev++) {
 		s_nPlate* net_plate = nnet->getLev(i_lev);
@@ -220,13 +250,16 @@ unsigned char NNet::weaveNet(s_NNet* nnet) {
 			if (!weaveNodeToPlate(net_plate->get(i_node), nnet->getLev(i_lev + 1)))
 				return ECODE_FAIL;
 	}
+	return ECODE_OK;
 }
 bool NNet::weaveNodeToPlate(s_nNode* nd, s_nPlate* plate) {
 	for (long i_lo = 0; i_lo < plate->N; i_lo++) {
 		nd->nodes[i_lo] = plate->getNd(i_lo);
 	}
 	nd->N = plate->N;
+	return true;
 }
+
 bool n_NNet::run(s_NNet* nnet) {
 	int N_lev_max = nnet->getNLev()-1;
 	for (int i_lev = N_lev_max; i_lev >= 0; i_lev--) {
@@ -245,7 +278,28 @@ bool n_NNet::run(s_NNet* nnet) {
 			nd->o = act_func(nd_in);
 		}
 	}
+	return true;
 }
 float n_NNet::act_func(float nd_in) {
 	return tanh(nd_in);
 }
+int n_NNet::getLinkedBaseOs(const s_NNet* nnet, s_Node_w os[]) {
+	if (nnet == NULL || nnet->getNLev() < 1 || os == NULL)
+		return -1;
+	int os_i = 0;
+	int lowest_lev = nnet->getNLev() - 1;
+	const s_nPlate* bot_plate = nnet->getBotLevConst();
+	for (long i_nd = 0; i_nd < bot_plate->N; i_nd++) {
+		const s_nNode* nd = bot_plate->getConst(i_nd);
+		for (long i_lo = 0; i_lo < nd->N; i_lo++) {
+			const s_nNode* lo_nd = nd->getHangingConst(i_lo);
+			os[os_i].lev_i = lowest_lev;
+			os[os_i].nd_i = i_nd;
+			os[os_i].w = lo_nd->o;
+			os[os_i].lo_i = i_lo;
+			os_i++;
+		}
+	}
+	return os_i;
+}
+

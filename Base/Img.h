@@ -12,9 +12,9 @@ public:
 	~Img();
 
 	virtual unsigned char init(const Img& other);
-	virtual unsigned char init(const unsigned char img[], long width, long height, long colorMode = 4);/*owns the image*/
-	unsigned char initNoOwn(unsigned char img[], long width, long height, long colorMode = 4);
-	virtual unsigned char init(long width, long height, long colorMode = 4);
+	virtual unsigned char init(const unsigned char img[], long width, long height, long colorMode = 4L);/*owns the image*/
+	unsigned char initNoOwn(unsigned char img[], long width, long height, long colorMode = 4L);
+	virtual unsigned char init(long width, long height, long colorMode = 4L);
 	void   clearToChar(unsigned char cval);
 	void release();
 

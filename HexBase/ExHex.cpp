@@ -1,5 +1,10 @@
 #include "ExHex.h"
-
+ExHex::ExHex() :m_stack(NULL), m_numHanging(0), m_numExHexes(0L), m_numNodes(0L), m_baseDim_in_R(0.f), m_Width(0L), m_Height(0L) {
+	;
+}
+ExHex::~ExHex() {
+	;
+}
 unsigned char ExHex::init(HexStack* stack, int numHanging) {
 	if (stack == NULL)
 		return ECODE_FAIL;
@@ -13,13 +18,25 @@ unsigned char ExHex::init(HexStack* stack, int numHanging) {
 	*/
 	m_numExHexes = numStackBaseEdgeHexes + 6;
 	m_numNodes = numStackBaseHexes + m_numExHexes;
+	float hexStack_NumHexesLongDim = m_stack->getNumHexesLongDim();
+	float sizeExBase_in_R = getSizeExBase(hexStack_NumHexesLongDim);
+	m_baseDim_in_R = sizeExBase_in_R;
+	float sizeExBase = sizeExBase_in_R * m_stack->getBottomR();
+	m_Width = (long)ceilf(sizeExBase);
+	m_Height = m_Width;
 	return ECODE_OK;
 }
-
-unsigned char ExHex::spawn(s_rtHexPlate* plate) {
+void ExHex::release() {
+	m_stack = NULL;
+	m_numHanging = 0;
+	m_numExHexes = 0L;
+	m_numNodes = 0L;
+}
+unsigned char ExHex::spawn(s_rtHexPlate* plate, s_2pt hexUs[]) {
 	if (plate == NULL)
 		return ECODE_ABORT;
-	unsigned char err = plate->init(m_numNodes, m_numHanging);
+	float r_base = m_stack->getBottomR();
+	unsigned char err = plate->init(m_numNodes, hexUs, r_base, m_numHanging);
 	if (Err(err))
 		return err;
 	s_HexPlate* stackBasePlate = m_stack->getBottomPlate();
@@ -34,9 +51,22 @@ unsigned char ExHex::spawn(s_rtHexPlate* plate) {
 		return err;
 	if(!n_HexBase::computeVecHexDistances(plate))
 		return ECODE_FAIL;
+	plate->width = m_Width;
+	plate->height = m_Height;
 	return ECODE_OK;
 }
-
+void ExHex::despawn(s_rtHexPlate* plate) {
+	if (plate != NULL)
+		plate->release();
+}
+float ExHex::getSizeExBase(float hexStack_NumHexesLongDim) {
+	float numHexes_stack_base_radius = hexStack_NumHexesLongDim / 2.f;
+	float numHexes_ex_stack_base = numHexes_stack_base_radius + 1.f;
+	float long_side = 2.f * n_HexRect::tangR(1.f) * numHexes_ex_stack_base;
+	const float short_side = 1.f / 2.f;
+	float base_long_dim_in_R = 2.f * sqrtf(short_side * short_side + long_side * long_side);
+	return base_long_dim_in_R;
+}
 unsigned char ExHex::copyBasePlateWeave(/*const*/ s_HexPlate* base, s_rtHexPlate* exPlate) {
 	if (base == NULL || exPlate == NULL)
 		return ECODE_ABORT;
@@ -53,8 +83,8 @@ unsigned char ExHex::copyBasePlateWeave(/*const*/ s_HexPlate* base, s_rtHexPlate
 				long linkedBaseIndex = linkedBaseHex->thislink;
 				s_Hex* linkedExHex = (s_Hex*)exPlate->get(linkedBaseIndex);
 				exHex->web[i_web] = (s_Node*)linkedExHex;
-				int rev_web_i = n_HexBase::revWeb_i(i_web);
-				linkedExHex->web[rev_web_i] = (s_Node*)exHex;
+				//int rev_web_i = n_HexBase::revWeb_i(i_web);
+				//linkedExHex->web[rev_web_i] = (s_Node*)exHex;
 			}
 		}
 
@@ -83,7 +113,7 @@ unsigned char ExHex::weaveExHexes(s_rtHexPlate* plate) {
 					candidateDupHex = nebHex_1->getWeb(n_HexBase::Web_i(i_web_posPre));
 					n_HexBase::weaveSharedHexToNeighbors(candidateDupHex, nebHex_1, baseHex);
 				}
-				else if (nebHex1 != NULL) {
+				if (nebHex1 != NULL && candidateDupHex==NULL) {
 					i_web_posPre -= 1;
 					candidateDupHex = nebHex1->getWeb(n_HexBase::Web_i(i_web_posPre));
 					n_HexBase::weaveSharedHexToNeighbors(candidateDupHex, nebHex1, baseHex);

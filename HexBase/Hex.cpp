@@ -89,7 +89,42 @@ void s_Hex::copy(const s_Hex* other) {
 	for (int ii = 0; ii < 3; ii++)
 		this->rgb[ii] = other->rgb[ii];
 }
-
+s_rtHex::s_rtHex() :loc_set(false) {
+	for (int ii = 0; ii < 3; ii++)
+		dv[ii] = 0;
+}
+s_rtHex::s_rtHex(const s_rtHex& other) {
+	s_Hex* otherP = (s_Hex*)&other;
+	s_Hex::copy(otherP);
+	for (int ii = 0; ii < 3; ii++)
+		dv[ii] = other.dv[ii];
+	loc_set = other.loc_set;
+}
+s_rtHex::~s_rtHex() {
+	;
+}
+unsigned char s_rtHex::init(const s_rtHex* other) {
+	unsigned char err = s_Hex::init((s_Hex*)other);
+	if (err != ECODE_OK)
+		return err;
+	for (int i = 0; i < 3;i++)
+		this->dv[i] = other->dv[i];
+	this->loc_set = other->loc_set;
+	return ECODE_OK;
+}
+s_rtHex& s_rtHex::operator=(const s_rtHex& other) {
+	if (this == &other)
+		return *this;
+	s_Hex::operator=(other);
+	for (int ii = 0; ii < 3; ii++)
+		this->dv[ii] = other.dv[ii];
+	this->loc_set = other.loc_set;
+	return *this;
+}
+void s_rtHex::copyDv(const s_rtHex* other) {
+	for (int ii = 0; ii < 3; ii++)
+		this->dv[ii] = other->dv[ii];
+}
 unsigned char s_lunHex::init(long plate_index) {
 	unsigned char err = s_Hex::init(plate_index);
 	if (err != ECODE_OK)
@@ -136,8 +171,14 @@ s_HexPlate::s_HexPlate() :height(0), width(0), Rhex(0.f), RShex(0.f), Shex(0.f) 
 s_HexPlate::~s_HexPlate() {
 	;
 }
-unsigned char s_HexPlate::init(long nNodes, int numHanging) {
-	genHexU_0();
+unsigned char s_HexPlate::init(long nNodes, s_2pt* inHexU, float inRhex, int numHanging) {
+	if(inHexU==NULL)
+		genHexU_0();
+	else {
+		for (int i = 0; i < 6; i++)
+			hexU[i] = inHexU[i];
+	}
+	initRs(inRhex);
 	unsigned char err = s_Plate::init(nNodes);
 	if (err != ECODE_OK)
 		return err;
@@ -156,42 +197,13 @@ unsigned char s_HexPlate::init(const s_HexPlate* other) {
 	unsigned char err = s_Plate::init(other->N_mem);
 	if (err != ECODE_OK)
 		return err;
-	this->N = other->N;
-	this->height = other->height;
-	this->width = other->width;
-	this->Rhex = other->Rhex;
-	this->RShex = other->RShex;
-	this->Shex = other->Shex;
-	for (int ii = 0; ii < 6; ii++)
-		utilStruct::copy2pt(this->hexU[ii], other->hexU[ii]);
-	for (int ii = 0; ii < N_mem; ii++) {
-		const s_Hex* other_hex = other->getConst(ii);
-		if (other_hex != NULL) {
-			this->nodes[ii] = new s_Hex;
-			if ((this->nodes[ii]) == NULL)
-				return ECODE_FAIL;
-			((s_Hex*)this->nodes[ii])->init(other_hex);
-		}
-	}
+	copyClassVars(other);
+	if((genNodesFromOther(other))!=ECODE_OK)
+		return ECODE_FAIL;
 	/*the plate is now created but the webs still point to the old plate */
-	for (int ii = 0; ii < N_mem; ii++) {
-		if (this->nodes[ii] != NULL) {
-			/*now fix the web since the old web will point to the web on the original plate*/
-			for (int i_web = 0; i_web < 6; i_web++) {
-				s_Hex* this_hex = (s_Hex*)this->nodes[ii];
-				s_Hex* lower_web_hex = (s_Hex*)this_hex->web[i_web];
-				if (lower_web_hex != NULL) {
-					long this_index_in_plate = lower_web_hex->thislink;/*thislink index is correct alghough pointer is wrong*/
-					s_Node* this_plate_ptr = this->nodes[this_index_in_plate];
-					this_hex->web[i_web] = this_plate_ptr;
-				}
-				else
-					this_hex->web[i_web] = NULL;
-			}
-		}
-	}
-	return ECODE_OK;
+	return transferWebs();
 }
+
 unsigned char s_HexPlate::initFixDownTarget(const s_HexPlate* other) {
 	unsigned char err = init(other);
 	if (err != ECODE_OK)
@@ -212,18 +224,8 @@ void s_HexPlate::initRs(float inRhex) {
 	Shex = Rhex; //equallat tri
 }
 void s_HexPlate::release() {
-	if (nodes != NULL) {
-		for (long ii = 0; ii < N_mem; ii++) {
-			if (nodes[ii] != NULL) {
-				((s_Hex*)nodes[ii])->release();
-				delete nodes[ii];
-			}
-			nodes[ii] = NULL;
-		}
-		N = 0;
-	}
-	reset();
 	s_Plate::release();
+	reset();
 }
 void s_HexPlate::setWeb(long index, int web_i, long target_i) {
 	if (target_i >= 0)
@@ -265,6 +267,82 @@ void s_HexPlate::reset() {
 void s_HexPlate::genHexU_0() {
 	n_Hex::genHexU_0(hexU);
 }
+void s_HexPlate::copyClassVars(const s_HexPlate* other) {
+	this->N = other->N;
+	this->height = other->height;
+	this->width = other->width;
+	this->Rhex = other->Rhex;
+	this->RShex = other->RShex;
+	this->Shex = other->Shex;
+	for (int ii = 0; ii < 6; ii++)
+		utilStruct::copy2pt(this->hexU[ii], other->hexU[ii]);
+}
+unsigned char s_HexPlate::genNodesFromOther(const s_HexPlate* other) {
+	for (int ii = 0; ii < N_mem; ii++) {
+		const s_Hex* other_hex = other->getConst(ii);
+		if (other_hex != NULL) {
+			this->nodes[ii] = new s_Hex;
+			if ((this->nodes[ii]) == NULL)
+				return ECODE_FAIL;
+			((s_Hex*)this->nodes[ii])->init(other_hex);
+		}
+	}
+	return ECODE_OK;
+}
+unsigned char s_HexPlate::transferWebs() {
+	for (int ii = 0; ii < N_mem; ii++) {
+		if (this->nodes[ii] != NULL) {
+			/*now fix the web since the old web will point to the web on the original plate*/
+			for (int i_web = 0; i_web < 6; i_web++) {
+				s_Hex* this_hex = (s_Hex*)this->nodes[ii];
+				s_Hex* lower_web_hex = (s_Hex*)this_hex->web[i_web];
+				if (lower_web_hex != NULL) {
+					long this_index_in_plate = lower_web_hex->thislink;/*thislink index is correct alghough pointer is wrong*/
+					s_Node* this_plate_ptr = this->nodes[this_index_in_plate];
+					this_hex->web[i_web] = this_plate_ptr;
+				}
+				else
+					this_hex->web[i_web] = NULL;
+			}
+		}
+	}
+	return ECODE_OK;
+}
+s_rtHexPlate::s_rtHexPlate() { ; }
+s_rtHexPlate::~s_rtHexPlate() { ; }
+unsigned char s_rtHexPlate::init(long nNodes, s_2pt* inHexU, float inRhex, int numHanging) {
+	if (inHexU == NULL)
+		genHexU_0();
+	else {
+		for (int i = 0; i < 6; i++)
+			hexU[i] = inHexU[i];
+	}
+	initRs(inRhex);
+	unsigned char err = s_Plate::init(nNodes);
+	if (err != ECODE_OK)
+		return err;
+	for (long ii = 0; ii < N_mem; ii++) {
+		nodes[ii] = new s_rtHex;
+		if (nodes[ii] == NULL)
+			return ECODE_FAIL;
+		((s_Hex*)nodes[ii])->init(N, numHanging);
+		N++;
+	}
+	return ECODE_OK;
+}
+unsigned char s_rtHexPlate::genNodesFromOther(const s_rtHexPlate* other) {
+	for (int ii = 0; ii < N_mem; ii++) {
+		const s_rtHex* other_hex = other->getConst(ii);
+		if (other_hex != NULL) {
+			this->nodes[ii] = new s_rtHex;
+			if ((this->nodes[ii]) == NULL)
+				return ECODE_FAIL;
+			((s_rtHex*)this->nodes[ii])->init(other_hex);
+		}
+	}
+	return ECODE_OK;
+}
+
 s_HexPlateLayer::s_HexPlateLayer() :p(NULL), N(0), N_mem(0) { ; }
 s_HexPlateLayer::~s_HexPlateLayer() { ; }
 unsigned char s_HexPlateLayer::init(int Nplates) {

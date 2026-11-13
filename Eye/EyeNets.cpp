@@ -1,5 +1,10 @@
 #include "EyeNets.h"
-
+s_EyeNets::s_EyeNets() : nets(NULL), N(0) {
+	;
+}
+s_EyeNets::~s_EyeNets() {
+	;
+}
 unsigned char s_EyeNets::init(int num_nets) {
 	if (num_nets < 1)
 		return ECODE_ABORT;
@@ -7,8 +12,28 @@ unsigned char s_EyeNets::init(int num_nets) {
 	for (int i = 0; i < num_nets; i++)
 		nets[i] = NULL;
 	N = num_nets;
+	return ECODE_OK;
 }
-
+void s_EyeNets::release() {
+	if (nets != NULL) {
+		for (int i = 0; i < N; i++) {
+			if (nets[i] != NULL) {
+				nets[i]->release();
+				delete nets[i];
+				nets[i] = NULL;
+			}
+		}
+		delete[] nets;
+		nets = NULL;
+	}
+	N = 0;
+}
+EyeNets::EyeNets() : m_hexStack(NULL), m_luna(NULL), m_genEyeNNet(NULL), m_numNets(0), m_numWeights(0), m_numBiases(0) {
+	;
+}
+EyeNets::~EyeNets() {
+	;
+}
 unsigned char EyeNets::init(HexStack* hexstack, Luna* luna, int num_nets) {
 	if (hexstack == NULL || luna == NULL || num_nets < 1)
 		return ECODE_ABORT;
@@ -27,6 +52,22 @@ unsigned char EyeNets::init(HexStack* hexstack, Luna* luna, int num_nets) {
 	m_numBiases = m_genEyeNNet[0]->getNumBiases();
 	return ECODE_OK;
 }
+void EyeNets::release() {
+	if (m_genEyeNNet != NULL) {
+		for (int i = 0; i < m_numNets; i++) {
+			if (m_genEyeNNet[i] != NULL) {
+				m_genEyeNNet[i]->release();
+				delete m_genEyeNNet[i];
+				m_genEyeNNet[i] = NULL;
+			}
+		}
+		delete[] m_genEyeNNet;
+		m_genEyeNNet = NULL;
+	}
+	m_numNets = 0;
+	m_numWeights = 0;
+	m_numBiases = 0;
+}
 unsigned char EyeNets::setWB(int net_i, s_Node_w weights[], s_Node_w biases[]) {
 	if (net_i<0 || net_i >= m_numNets)
 		return ECODE_ABORT;
@@ -43,8 +84,23 @@ unsigned char EyeNets::spawn(s_HexPlateLayer* lunaPlates, s_EyeNets* eyenets) {
 		if (Err(genNet->spawn(lunaPlates, eyenets->nets[i_net])))
 			return ECODE_FAIL;
 	}
+	return ECODE_OK;
 }
-
+void EyeNets::despawn(s_EyeNets* eyenets) {
+	if (eyenets == NULL)
+		return;
+	if (m_genEyeNNet != NULL && eyenets->nets!=NULL) {
+		for (int i_net = 0; i_net < m_numNets; i_net++) {
+			EyeNNet* genNet = m_genEyeNNet[i_net];
+			if (genNet != NULL && eyenets->nets[i_net] != NULL) {
+				genNet->despawn(eyenets->nets[i_net]);
+				delete eyenets->nets[i_net];
+				eyenets->nets[i_net] = NULL;
+			}
+		}
+	}
+	eyenets->release();
+}
 bool n_EyeNets::run(s_EyeNets* eyenets) {
 	for (int i_net = 0; i_net < eyenets->N; i_net++) {
 		s_NNet* net = eyenets->nets[i_net];

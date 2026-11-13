@@ -9,6 +9,8 @@
 #include "../HexBase/HexStack.h"
 #endif
 
+const float EYENNET_DEFBIAS = 0.f;
+const float EYENNET_DEFWEIGHT = 0.f;
 
 class EyeNNet : public NNet {
 public:
@@ -17,6 +19,7 @@ public:
 
 	unsigned char init(HexStack* hexstack, Luna* luna);
 	unsigned char setWB(s_Node_w weights[], s_Node_w biases[]);
+	void release();
 	unsigned char spawn(/*const*/s_HexPlateLayer* lunaPlates, s_NNet* nnet);
 	void despawn(s_NNet* nnet);
 
@@ -36,5 +39,6 @@ private:
 	s_Node_w* m_biases;
 
 	unsigned char initNumNodes();
+	unsigned char initDefaultNetWeights();
 };
 #endif

@@ -48,7 +48,7 @@ public:
 protected:
 	string m_inFile;
 	string m_outFile;
-	std::string m_header;
+	string m_header;
 
 
 	string dumpFloatLine(const float* ar, int len);

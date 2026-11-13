@@ -29,7 +29,7 @@ public:
 	void despawn(s_rtHexPlate* plate);
 
 	inline s_ConvolHex getMask() { return m_Convol->getMask(); }
-	inline long getCenterHexIndex() { return m_center_hex_index; }
+	inline Img* getImg() { return m_img; }
 protected:
 	/*not owned */
 	Img* m_img;
@@ -38,8 +38,8 @@ protected:
 
 
 	s_2pt_i m_corner_start_hex_center;/*starts from top left, min X max Y*/
+	s_2pt_i m_center_start_hex_center;
 	s_2pt m_corner_margin;
-	long m_center_hex_index;
 };
 
 namespace n_HexImg {

@@ -8,11 +8,13 @@
 #include "EyeCore.h"
 #endif
 
-const float EYECORE_root_plate_buffer_factor = 1.3;
+
 const float EYCORE_max_RGB_len_inv = 1.f / (255.f * sqrt(3.f));
 
 class s_Eye {
 public:
+	s_Eye();
+	~s_Eye();
 	unsigned char init(int numCores);
 	void release();
 	s_HexStack* refHexStack;/*first hex stack in initial orientation*/
@@ -26,7 +28,15 @@ class Eye : Base {
 public:
 	Eye();
 	~Eye();
-	unsigned char init(HexImg* hexImg, float r, float twisted_root_radius, float sigma/*in top plate r*/, int numRot, int numCurvePatterns, int numStackLevels);
+	unsigned char init(
+		HexImg* hexImg, 
+		float r, 
+		float twisted_root_radius, 
+		float sigma/*in top plate r*/, 
+		int numRot, 
+		int numCurvePatterns, 
+		int numStackLevels
+	);
 	unsigned char setWB(int net_i, s_Node_w weights[], s_Node_w biases[]);
 	void release();
 	unsigned char spawn(s_Eye* newEye);
@@ -36,30 +46,26 @@ public:
 	inline int getNumBiases() { return m_eyeNets->getNumBiases(); }
 	inline int getNLinkedBaseOs() { return m_eyeNets->getNLinkedBaseOs(); }
 	inline int getNSingleNodeBaseOs() { return m_eyeNets->getNSingleNodeBaseOs(); }
+	inline long getRootCenterIndex() { return m_hexRect->getCenterIndex(); }
 protected:
 	/*not owned*/
 	HexImg* m_hexImg;
 	/*owned*/
 	HexStack* m_hexStack;
 	rtHexRect* m_hexRect;
-	ExHex* m_exHex;
 	TwistedPlate* m_twistedPlate;
 	Luna* m_Luna;
 	EyeNets* m_eyeNets;
 	EyeCore* m_eyeCore;
 
-	float m_twisted_root_radius;/* radius per hex down from twisted plate onto root plate in R of upper plate*/
+	float m_R_base;
+	float m_twisted_root_radius_in_R;/* radius per hex down from twisted plate onto root plate in R of upper plate*/
 	int m_numRot;
 	float m_dAng;
 	float* m_Angs;
 
-	/*init helper*/
-	float getSizeRootBase();
-	int getNumhangingBaseToRoot();
 };
 namespace n_Eye {
-	float getSizeExBase(float hexStack_NumHexesLongDim);
-	float getSizeRootBase(float sizeExBase, float twisted_root_radius); /*dim are in terms of lowest stack plate R*/
 	bool run(s_Eye* eye); /*assumes Eye is already rooted*/
 	float filter(float rgb[]);
 }

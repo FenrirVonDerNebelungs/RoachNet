@@ -7,16 +7,12 @@
 #endif
 
 namespace n_HexRect {
-	float tangR(float r) { return r * sqrtf(3.f) / 2.f; }
+	float tangR(float r);
 
 	int minSpan(float minCovered_width, float r);
-	int minSpanOdd(float minCovered_width, float r) {
-		int tryNumSpan = minSpan(minCovered_width, r); if (tryNumSpan % 2 == 0) tryNumSpan++; return tryNumSpan;
-	}
+	int minSpanOdd(float minCovered_width, float r);
 	int minLines(float minCovered_height, float r);
-	int minLinesOdd(float minCovered_height, float r) {
-		int tryNumLines = minLines(minCovered_height, r); if (tryNumLines % 2 == 0) tryNumLines++; return tryNumLines;
-	}
+	int minLinesOdd(float minCovered_height, float r);
 	int maxSpan(float max_width, float r);
 	int maxLines(float max_height, float r);
 }
@@ -29,7 +25,7 @@ public:
 	virtual unsigned char init(int numHexSpanLong, int numHexLines, float r=3.f, int numHanging=1);
 	virtual void release();
 
-	virtual unsigned char spawn(s_HexPlate* plate);
+	virtual unsigned char spawn(s_HexPlate* plate, s_2pt* hexUs=NULL);
 	virtual void despawn(s_HexPlate* plate);
 
 	inline int getNumHexes() { return m_numHexes; }
@@ -63,9 +59,12 @@ protected:
 };
 class rtHexRect :public HexRect {
 public:
+	rtHexRect();
+	~rtHexRect();
+
 	virtual unsigned char init(int numHexSpanLong, int numHexLines, float r = 3.f, int numHanging = 1);
 
-	virtual unsigned char spawn(s_rtHexPlate* plate); 
+	virtual unsigned char spawn(s_rtHexPlate* plate, s_2pt* hexUs=NULL);
 	virtual void despawn(s_rtHexPlate* plate);
 
 	long getCenterIndex() { return m_centerIndex; }

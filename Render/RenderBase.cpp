@@ -23,7 +23,7 @@ unsigned char n_RenderBase::setPlate_hex_o_toRGB(s_HexPlate* plate, s_rgb& col) 
 	return ECODE_OK;
 }
 
-RenderBase::RenderBase() : m_flag_rgb_unit_scaled(false), m_flag_doGridOverlay(false), m_grid_line_width(0.f), m_R(0.f), m_RS(0.f), m_hex_mask(NULL), m_hex_grid_mask(NULL), m_half_hex_masks(NULL) {
+RenderBase::RenderBase() : m_flag_dv_loc(false), m_flag_rgb_unit_scaled(false), m_flag_doGridOverlay(false), m_grid_line_width(0.f), m_R(0.f), m_RS(0.f), m_hex_mask(NULL), m_hex_grid_mask(NULL), m_half_hex_masks(NULL) {
 	utilStruct::zeroRGB(m_grid_col);
 	for (int i = 0; i < 6; i++)
 		utilStruct::zero2pt(m_U[i]);
@@ -32,27 +32,22 @@ RenderBase::RenderBase() : m_flag_rgb_unit_scaled(false), m_flag_doGridOverlay(f
 RenderBase::~RenderBase() {
 	;
 }
-unsigned char RenderBase::init( HexRect* hexRect, bool rgb_unit_scaled, bool do_grid_overlay, float grid_line_width) {
-	if(Err(init(hexRect->getRhex(), rgb_unit_scaled, do_grid_overlay, grid_line_width)))
+unsigned char RenderBase::init( HexRect* hexRect, bool rgb_unit_scaled, bool do_grid_overlay, bool use_dv_loc, float grid_line_width) {
+	if(Err(init(hexRect->getRhex(), rgb_unit_scaled, do_grid_overlay, use_dv_loc, grid_line_width, hexRect->getHexUs() )))
 		return ECODE_FAIL;
-	s_2pt* hexU = hexRect->getHexUs();
-	for (int i_web = 0; i_web < 6; i_web++)
-		m_U[i_web] = hexU[i_web];
-	return InitMasks();
+	return ECODE_OK;
 }
-unsigned char RenderBase::init(HexStack* hexStack, bool rgb_unit_scaled, bool do_grid_overlay, float grid_line_width) {
-	if(Err(init(hexStack->getBottomR(), rgb_unit_scaled, do_grid_overlay, grid_line_width)))
+unsigned char RenderBase::init(HexStack* hexStack, bool rgb_unit_scaled, bool do_grid_overlay, bool use_dv_loc, float grid_line_width) {
+	if(Err(init(hexStack->getBottomR(), rgb_unit_scaled, do_grid_overlay, use_dv_loc, grid_line_width, hexStack->getHexUs() )))
 		return ECODE_FAIL;
-	s_2pt* hexU = hexStack->getHexUs();
-	for (int i_web = 0; i_web < 6; i_web++)
-		m_U[i_web] = hexU[i_web];
-	return InitMasks();
+	return ECODE_OK;
 }
-unsigned char RenderBase::init(float r, bool rgb_unit_scaled, bool do_grid_overlay, float grid_line_width) {
+unsigned char RenderBase::init(float r, bool rgb_unit_scaled, bool do_grid_overlay, bool use_dv_loc, float grid_line_width, s_2pt* U) {
 	if (m_hex_mask != NULL || m_hex_grid_mask != NULL)
 		return ECODE_FAIL;
 	m_flag_rgb_unit_scaled = rgb_unit_scaled;
 	m_flag_doGridOverlay = do_grid_overlay;
+	m_flag_dv_loc = use_dv_loc;
 	m_grid_line_width = grid_line_width;
 	m_grid_col.r = 0x30;
 	m_grid_col.g = 0x30;
@@ -64,11 +59,17 @@ unsigned char RenderBase::init(float r, bool rgb_unit_scaled, bool do_grid_overl
 	m_half_hex_masks = new Img * [6];
 	for (int i_web = 0; i_web < 6; i_web++)
 		m_half_hex_masks[i_web] = new Img;
-	s_HexPlate s_dummy_hplate;
-	s_dummy_hplate.init(3);
-	for (int i_web = 0; i_web < 6; i_web++) 
-		m_U[i_web] = s_dummy_hplate.hexU[i_web];
-	s_dummy_hplate.release();
+	if (U == NULL) {
+		s_HexPlate s_dummy_hplate;
+		s_dummy_hplate.init(3, NULL, 3.f);
+		for (int i_web = 0; i_web < 6; i_web++)
+			m_U[i_web] = s_dummy_hplate.hexU[i_web];
+		s_dummy_hplate.release();
+	}
+	else {
+		for (int i_web = 0; i_web < 6; i_web++)
+			m_U[i_web] = U[i_web];
+	}
 	m_R = r;
 	m_RS = sqrtf(3.f) / 2.f;
 	m_RS *= m_R;
@@ -130,6 +131,12 @@ unsigned char RenderBase::spawnHexPlateImg(s_HexPlate* plt, Img* iimg) {
 		if (Err(InitImg_for_HexPlate((s_HexPlate*)plt, iimg)))
 			return ECODE_FAIL;
 	s_2pt_i img_offset = { 0L, 0L };
+	if (m_flag_dv_loc) {
+		float half_w = (float)iimg->getWidth() / 2.f;
+		float half_h = (float)iimg->getHeight() / 2.f;
+		img_offset.x0 = Math::ftol(half_w);
+		img_offset.x1 = Math::ftol(half_h);
+	}
 	return RenderHexPlate_to_Img((s_HexPlate*)plt, img_offset, iimg);
 }
 void RenderBase::despawnHexPlateImg(Img* iimg) {
@@ -139,6 +146,7 @@ void RenderBase::despawnHexPlateImg(Img* iimg) {
 }
 unsigned char RenderBase::RenderHex(s_Hex* hex, s_2pt_i& center, Img* iimg, bool doGridOverlay, bool doFill, int half_hex_web_i) {
 	unsigned char ercode = ECODE_OK;
+	const float RS = m_R * sqrtf(3.f) / 2.f;
 	if (hex == NULL)
 		return ECODE_FAIL;
 	s_rgb plate_col;
@@ -151,6 +159,12 @@ unsigned char RenderBase::RenderHex(s_Hex* hex, s_2pt_i& center, Img* iimg, bool
 			scaled_rgb[i_col] = hex->rgb[i_col];
 	imgMath::FloatsToRGB(scaled_rgb, plate_col);
 	s_2pt_i ij = { hex->i + center.x0, hex->j + center.x1 };
+	if (m_flag_dv_loc) {
+		s_2pt pixLoc = n_HexBase::Loc((s_rtHex*)hex, m_U, RS); //hexU is twisted
+		/* set the i, j loc in the twistetd plate relative to the center of the plate, or eye center but in pixels */
+		ij.x0 = Math::ftol(pixLoc.x0)+center.x0;
+		ij.x1 = Math::ftol(pixLoc.x1)+center.x1;
+	}
 	if (doFill)
 		ercode |= iimg->PrintMaskedImg(ij.x0, ij.x1, *m_hex_mask, plate_col);
 	if (doGridOverlay)
@@ -165,15 +179,15 @@ bool RenderBase::IsImgInit(Img* iimg) {
 		return false;
 	unsigned char* internal_image_ptr = iimg->getImg();
 	if (internal_image_ptr == NULL)
-		return true;
-	else return false;
+		return false;
+	else return true;
 }
 bool RenderBase::IsImgDimMatch(s_HexPlate* plt, Img* iimg) {
 	if (plt == NULL || iimg == NULL)
 		return false;
-	if (plt->width <= iimg->getWidth())
+	if (plt->width < iimg->getWidth())
 		return false;
-	if (plt->height <= iimg->getHeight())
+	if (plt->height < iimg->getHeight())
 		return false;
 	return true;
 }
@@ -213,6 +227,7 @@ unsigned char RenderBase::InitMasks() {
 		return ECODE_FAIL;
 	if (Err(InitHalfMasks_for_hexes(m_U, m_R, m_RS)))
 		return ECODE_FAIL;
+	return ECODE_OK;
 }
 unsigned char RenderBase::InitMask_for_hex_dim(float r, float rs) {
 	if (m_hex_mask == NULL || m_hex_grid_mask==NULL)

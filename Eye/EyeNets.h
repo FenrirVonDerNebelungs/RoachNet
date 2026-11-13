@@ -30,6 +30,7 @@ public:
 
 	unsigned char init(HexStack* hexstack, Luna* luna, int num_nets);
 	unsigned char setWB(int net_i, s_Node_w weights[], s_Node_w biases[]);
+	void release();
 	unsigned char spawn(/*const*/s_HexPlateLayer* lunaPlates, s_EyeNets* eyenets);
 	void despawn(s_EyeNets* eyenets);
 

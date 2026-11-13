@@ -37,6 +37,8 @@ const std::string g_outSuffix = ".txt";
 
 class TrainEye : public Base {
 public:
+	TrainEye();
+	~TrainEye();
 	unsigned char init(
 		int N_imgs,
 		int imgDim,

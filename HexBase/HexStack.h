@@ -88,7 +88,7 @@ protected:
 	void          releaseStack(s_HexStack* neye);
 	/* helpers to init Stack */
 	long numHexInLevel(long N_prev, int N_level);
-	float sizeOfLevel(int N_level);/*N_level starts at 0 */
+	float sizeOfLevel(float R_lev, int N_level);/*N_level starts at 0 */
 
 	unsigned char genEye(s_HexStack* neye);
 	/* helpers to genEye             */

@@ -1,12 +1,18 @@
 #pragma once
 #ifndef TESTHEXIMG_H
 #define TESTHEXIMG_H
-#ifndef RENDERBASE_H
-#include "../Render/RenderBase.h"
+
+#ifndef CTARGAIMAGE_H
+#include "../FileIO/CTargaImage.h"
+#endif
+#ifndef RENDERPLATE_H
+#include "../Render/RenderPlate.h"
 #endif
 #ifndef HEXIMG_H
 #include "../HexedImg/HexImg.h"
 #endif
+
+//const std::string g_baseDir = "Dat/";
 
 class TestHexImg : public Base {
 public:
@@ -14,20 +20,28 @@ public:
 	~TestHexImg();
 
 	unsigned char init(
-		HexImg* hexImg
+		HexImg* hexImg,
+		s_rtHexPlate* m_imgHexedPlate,
+		CTargaImage* tgaImgOut
 		);
 	void release();
 
-	unsigned char genHexedImg(Img* hexed_img);
-	unsigned char genWebImg(Img* web_img, int web_i);
+	unsigned char runWrite();
+
 private:
+	/*not owned*/
+	HexImg* m_hexImg;
+	s_rtHexPlate* m_imgHexedPlate;
 	/*owned*/
-	RenderBase* m_render;
+	RenderPlate* m_render;
+	CTargaImage* m_tgaImgOut;
 
 	s_2pt_i m_img_center;
 	s_2pt_i m_render_center;
-	/*not owned*/
-
+	
+	unsigned char genHexedImg(Img* hexed_img);
+	unsigned char genWebImgs(Img* web_imgs[]);
+	unsigned char writeImages(Img* hexed_img, Img* web_imgs[]);
 };
 
 #endif

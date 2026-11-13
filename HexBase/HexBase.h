@@ -6,6 +6,8 @@
 #include "Hex.h"
 #endif
 
+const int HEXBASE_MAXRTHEXLOC = 1000000;
+
 namespace n_HexBase {
 	/*helpers*/
 	int revWeb_i(int web_i);/*returns the web index that is opposite to the input web index*/
@@ -19,14 +21,16 @@ namespace n_HexBase {
 	bool weaveSharedHexNeighbors(/*const*/ s_Hex* commonHexNode, s_Hex* hex1, s_Hex* hex2);/*weaves the two hexes together if they both share the same neighbor node*/
 	bool copyWeave(/*const*/ s_HexPlate* sewnPlate, s_HexPlate* loosePlate);/*sets up loosePlate so that it has an inter hex weave like the sewn plate,  source must have at least as many hexes as the loose plate*/
 
+	bool reduceRtHexLoc(s_rtHex* hex);
 	bool computeVecHexDistances(s_rtHexPlate* plate, int center_index = 0);
-	s_2pt Loc(const s_rtHex* hex, const s_2pt hexU[], const float r);/*assumes vec distances have been filled*/
+	bool reduceVecHexDistances(s_rtHexPlate* plate);
+	s_2pt Loc(const s_rtHex* hex, const s_2pt hexU[], const float RS);/*assumes vec distances have been filled*/
 
-	bool root(s_rtHexPlate* root_plate, const s_rtHexPlate* base_plate, long base_index); /* assumes both plates have exactly the 
+	bool root(s_rtHexPlate* root_plate, const s_rtHexPlate* base_plate, long root_index, long base_index); /* assumes both plates have exactly the 
 	                                                       same hex size
 															roots root_plate on base plate 
 	                                                          at base plate index base_index startes at root plate index of 0*/
-	bool rootSweep(s_rtHexPlate* root_plate, const s_rtHexPlate* base_plate, long base_index, int web_dir_i); /* assumes both plates have exactly the 
+	bool rootSweep(s_rtHexPlate* root_plate, const s_rtHexPlate* base_plate, long root_index, long base_index, int web_dir_i); /* assumes both plates have exactly the 
 														   same hex size
 															roots root_plate on base plate 
 															  at base plate index base_index startes at root plate index of 0

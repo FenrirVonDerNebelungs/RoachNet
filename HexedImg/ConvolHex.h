@@ -69,8 +69,9 @@ protected:
 
 };
 namespace n_ConvolHex {
+	void clear(s_ConvolHex& MaskVars);
 	bool convulMaskToHex(const Img* img, const s_ConvolHex& Mask, const s_2pt_i& hex_loc, float rgb[]);/*uses the gausian with all three cols to set hex to single col*/
-	void convulMaskToHex(s_ConvolHex MaskVars, s_convKernVars IOVars);
+	//void convulMaskToHex(s_ConvolHex MaskVars, s_convKernVars IOVars);
 }
 
 

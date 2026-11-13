@@ -1,72 +1,83 @@
-#include "TestHexEyeImg_C.h"
-TestHexEyeImg_C::TestHexEyeImg_C():m_render(NULL),m_genHexedImg(NULL), m_genHexEye(NULL), m_seye(NULL), m_baseImg(NULL) {
-	utilStruct::zero2pt_i(m_render_center);
+#include "TestHexImg.h"
+TestHexImg::TestHexImg() :m_render(NULL), m_hexImg(NULL), m_imgHexedPlate(NULL), m_tgaImgOut(NULL) {
 	utilStruct::zero2pt_i(m_img_center);
+	utilStruct::zero2pt_i(m_render_center);
 }
-TestHexEyeImg_C::~TestHexEyeImg_C() {
+TestHexImg::~TestHexImg() {
 	;
 }
-unsigned char TestHexEyeImg_C::init(Img* baseImg, float r, int N_eye_levels) {
-	if (baseImg == NULL)
+unsigned char TestHexImg::init(HexImg* hexImg, s_rtHexPlate* imgHexedPlate, CTargaImage* tgaImgOut) {
+	if (hexImg == NULL || imgHexedPlate == NULL || tgaImgOut == NULL)
 		return ECODE_FAIL;
-	m_baseImg = baseImg;
-	m_render = new RenderBase;
-	if (Err(m_render->init(r, false)))
-		return ECODE_FAIL;
-	m_genHexedImg = new HexEyeImg;
-	m_genHexEye = new HexEye;
-	if (Err(m_genHexEye->init(r, N_eye_levels)))
+	m_hexImg = hexImg;
+	m_imgHexedPlate = imgHexedPlate;
+	m_tgaImgOut = tgaImgOut;
+	m_render = new RenderPlate;
+	if (Err(m_render->init(hexImg->getRhex())))
 		return ECODE_FAIL;
 	m_render_center.x0 = 0L;
 	m_render_center.x1 = 0L;
-	m_img_center = baseImg->getCenter();
-	s_2pt img_centerf = { (float)m_img_center.x0, (float)m_img_center.x1 };
-	m_genHexedImg->init(baseImg, img_centerf, m_genHexEye);
-	/*now generate the spawned stuff*/
-	m_seye = new s_HexEye;
-	if (Err(m_genHexEye->spawn(m_seye)))
-		return ECODE_FAIL;
-	if (Err(m_genHexedImg->root(baseImg, *m_seye)))
-		return ECODE_FAIL;
+	m_img_center = { 0L, 0L };
 	return ECODE_OK;
 }
-void TestHexEyeImg_C::release() {
-	if (m_genHexEye != NULL)
-		m_genHexEye->despawn(m_seye);
-	if (m_seye != NULL)
-		delete m_seye;
-	m_seye = NULL;
-	if (m_genHexedImg != NULL) {
-		m_genHexedImg->release();
-		delete m_genHexedImg;
-	}
-	m_genHexedImg = NULL;
-	if (m_genHexEye != NULL) {
-		m_genHexEye->release();
-		delete m_genHexEye;
-	}
-	m_genHexEye = NULL;
+void TestHexImg::release() {
 	if (m_render != NULL) {
 		m_render->release();
 		delete m_render;
+		m_render = NULL;
 	}
-	m_render = NULL;
-	m_baseImg = NULL;
+	m_hexImg = NULL;
+	m_imgHexedPlate = NULL;
+	m_tgaImgOut = NULL;
+	utilStruct::zero2pt_i(m_img_center);
+	utilStruct::zero2pt_i(m_render_center);
 }
-unsigned char TestHexEyeImg_C::genHexedImg(Img* hexed_img, int level) {
-	if (hexed_img == NULL || m_baseImg==NULL)
+unsigned char TestHexImg::runWrite() {
+	Img* hexed_img = new Img();
+	Img* web_imgs[6] = { new Img(), new Img(), new Img(), new Img(), new Img(), new Img() };
+	if (Err(genHexedImg(hexed_img)))
 		return ECODE_FAIL;
-	if (Err(hexed_img->init(*m_baseImg)))/*init by putting the orignal image into the image to return*/
+	if (Err(genWebImgs(web_imgs)))
 		return ECODE_FAIL;
-	if (Err(m_genHexedImg->run(m_baseImg, *m_seye)))
+	if (Err(writeImages(hexed_img, web_imgs)))
 		return ECODE_FAIL;
-	/*draw the hexed image on the original image*/
-	if(level<0)
-		return m_render->RenderHexPlate(m_seye->getBottom(), m_render_center, hexed_img);
-	for (int i_eye_lev = (m_seye->N - 1); i_eye_lev >= level; i_eye_lev--) {
-		float level_r = m_seye->get(i_eye_lev)->Rhex;
-		m_render->resetR(level_r);
-		if (Err(m_render->RenderHexPlate(m_seye->get(i_eye_lev), m_render_center, hexed_img)))
+	hexed_img->release();
+	delete hexed_img;
+	for (int i = 0; i < 6; i++) {
+		web_imgs[i]->release();
+		delete web_imgs[i];
+	}
+	return ECODE_OK;
+}
+unsigned char TestHexImg::genHexedImg(Img* hexed_img) {
+	if (hexed_img == NULL)
+		return ECODE_FAIL;
+	if (Err(hexed_img->init(*m_hexImg->getImg())))/*init by putting the orignal image into the image to return*/
+		return ECODE_FAIL;
+	if (Err(m_render->RenderHexPlate(m_imgHexedPlate, m_render_center, hexed_img)))
+		return ECODE_FAIL;
+	return ECODE_OK;
+}
+unsigned char TestHexImg::genWebImgs(Img* web_img[]) {
+	if (web_img == NULL)
+		return ECODE_FAIL;
+	if (Err(m_render->spawnWebPlateImg(m_imgHexedPlate, web_img)))
+		return ECODE_FAIL;
+	return ECODE_OK;
+}
+unsigned char TestHexImg::writeImages(Img* hexed_img, Img* web_imgs[]) {
+	if (hexed_img == NULL || web_imgs == NULL)
+		return ECODE_FAIL;
+	m_tgaImgOut->Release();
+	m_tgaImgOut->Init(hexed_img->getImg(), (unsigned short)hexed_img->getWidth(), (unsigned short)hexed_img->getHeight(), false, IMAGE_RGB);
+	std::string hexedImgPath = g_baseDir + "hexedImg.tga";
+	if (Err(m_tgaImgOut->Write(hexedImgPath.c_str())))
+		return ECODE_FAIL;
+	for (int i = 0; i < 6; i++) {
+		m_tgaImgOut->Release();
+		m_tgaImgOut->Init(web_imgs[i]->getImg(), (unsigned short)web_imgs[i]->getWidth(), (unsigned short)web_imgs[i]->getHeight(), false, IMAGE_RGB);
+		std::string webImgPath = g_baseDir + "webImg_" + std::to_string(i) + ".tga";
+		if (Err(m_tgaImgOut->Write(webImgPath.c_str())))
 			return ECODE_FAIL;
 	}
 	return ECODE_OK;

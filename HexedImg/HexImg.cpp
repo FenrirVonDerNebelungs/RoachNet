@@ -4,6 +4,7 @@ HexImg::HexImg() :m_img(NULL), m_Convol(NULL)
 {
 	utilStruct::zero2pt(m_corner_margin);
 	utilStruct::zero2pt_i(m_corner_start_hex_center);
+	utilStruct::zero2pt_i(m_center_start_hex_center);
 }
 HexImg::~HexImg() {
 	;
@@ -13,7 +14,7 @@ unsigned char HexImg::init(Img* img,
 	float r,
 	float sigmaVsR,
 	float IMaskRVsR) {
-	if (m_img == NULL || r<=1.f)
+	if (img == NULL || r<=1.f)
 		return ECODE_ABORT;
 	m_img = img;
 	m_R = r;
@@ -22,7 +23,11 @@ unsigned char HexImg::init(Img* img,
 	if (img_width < 3.f || img_height < 3.f)
 		return ECODE_ABORT;
 	int maxSpan_hexes = n_HexRect::maxSpan(img_width, m_R);
+	if(maxSpan_hexes%2 !=0)
+		maxSpan_hexes -= 1;
 	int maxLines_hexes = n_HexRect::maxLines(img_height, m_R);
+	if (maxLines_hexes % 2 == 0)
+		maxLines_hexes -= 1;
 	if (Err(rtHexRect::init(maxSpan_hexes, maxLines_hexes, m_R)))
 		return ECODE_ABORT;
 	m_Convol = new ConvolHex;
@@ -36,16 +41,14 @@ unsigned char HexImg::init(Img* img,
 	m_corner_margin.x1 = img_height_margin;
 	const float hex_half_height = m_R;
 	const float hex_half_width = m_RS;
-	float hex_X_start = img_span_margin + hex_half_width;
-	float hex_Y_start = (img_height-1.f) - (img_height_margin + hex_half_height);
-	m_corner_start_hex_center.x0 = (long)floorf(hex_X_start);
-	m_corner_start_hex_center.x1 = (long)ceilf(hex_Y_start);
+	float hex_X_corner = img_span_margin + hex_half_width;
+	float hex_Y_corner = (img_height-1.f) - (img_height_margin + hex_half_height);
+	m_corner_start_hex_center.x0 = (long)floorf(hex_X_corner);
+	m_corner_start_hex_center.x1 = (long)ceilf(hex_Y_corner);
 	if (m_corner_start_hex_center.x0 <= 0 || m_corner_start_hex_center.x1 >= m_img->getHeight())
 		return ECODE_FAIL;
-	long half_numHexes = (long)(m_numHexes/2);
-	if (m_numHexes % 2 != 0)
-		half_numHexes += 1;
-	m_center_hex_index = half_numHexes;
+	m_center_start_hex_center.x0 = (long)floorf(img_width / 2.f);
+	m_center_start_hex_center.x1 = (long)floorf(img_height / 2.f);
 	return ECODE_OK;
 }
 void HexImg::release() {
@@ -63,11 +66,11 @@ unsigned char HexImg::spawn(s_rtHexPlate* plate) {
 		return ECODE_ABORT;
 	if(Err(rtHexRect::spawn(plate)))
 		return ECODE_ABORT;
-	long start_i = m_corner_start_hex_center.x0;
-	long start_j = m_corner_start_hex_center.x1;
+	long start_i = m_center_start_hex_center.x0;
+	long start_j = m_center_start_hex_center.x1;
 	for (long hex_i = 0; hex_i < m_numHexes; hex_i++) {
 		s_rtHex* hex = plate->get(hex_i);
-		s_2pt hex_rel_loc = n_HexBase::Loc(hex, m_U, m_R);
+		s_2pt hex_rel_loc = n_HexBase::Loc(hex, m_U, m_RS);
 		long rel_i_loc = (long)roundf(hex_rel_loc.x0);
 		long rel_j_loc = (long)roundf(hex_rel_loc.x1);
 		long i_loc = start_i + rel_i_loc;
@@ -84,6 +87,9 @@ unsigned char HexImg::spawn(s_rtHexPlate* plate) {
 		hex->j = j_loc;
 	}
 	return ECODE_OK;
+}
+void HexImg::despawn(s_rtHexPlate* plate) {
+	rtHexRect::despawn(plate);
 }
 bool n_HexImg::update(s_rtHexPlate* plate, const Img* img, const s_ConvolHex& MaskVars) {
 	for (long i_hex = 0; i_hex < plate->N; i_hex++) {

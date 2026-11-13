@@ -1,5 +1,40 @@
 #include "TrainEye.h"
 
+TrainEye::TrainEye() : 
+	m_tgaImg(NULL), 
+	m_parseTxt_Key(NULL), 
+	m_parseTxt_Sig(NULL), 
+	m_parseTxt_Bak(NULL), 
+	m_Imgs(NULL), 
+	m_N_imgs(0), 
+	m_eyeBaseImg(NULL), 
+	m_hexImg(NULL), 
+	m_Eye(NULL), 
+	m_imgHexedPlate(NULL), 
+	m_seye(NULL),
+	m_imgDim(0), 
+	m_numLunaXs(0),
+	m_sigToBackgroundRatio(0.f),
+	m_slideSigma(0.f),
+	m_numSlideSmears(0),
+	m_numRotSmears(0),
+	m_numTotSmears(0),
+	m_sigSmearDR(0.f), 
+	m_sigSmearDAng(0.f),
+	m_numTotSigSmears(0),
+	m_numSigOut(0),
+	m_numBakOut(0)
+{
+	n_ConvolHex::clear(m_eyeBaseConvolHexMaskVars);
+	n_gaussianInt::clear(m_gaussDxyBak);
+	n_gaussianInt::clear(m_gaussDxySig);
+	n_gaussianInt::clear(m_gaussDAngSig);
+}
+
+TrainEye::~TrainEye() {
+	;
+}
+
 unsigned char TrainEye::init(
 	int N_imgs,
 	int imgDim,
@@ -40,14 +75,14 @@ unsigned char TrainEye::init(
 	m_eyeBaseImg->init(imgDim, imgDim, g_colorMode);
 	m_hexImg->init(m_eyeBaseImg, RHex);
 	m_eyeBaseConvolHexMaskVars = m_hexImg->getMask();
-	m_Eye->init(m_hexImg, RHex, twisted_root_radius, sigma_hexImg, 1, numCurvePatterns, g_numStackLevels);
+	m_Eye->init(m_hexImg, RHex, twisted_root_radius, sigma_hexImg, 1, 1, g_numStackLevels);
 
 	m_imgHexedPlate = new s_rtHexPlate;
 	m_hexImg->spawn(m_imgHexedPlate);
 	m_seye = new s_Eye;
 	m_Eye->spawn(m_seye);
 	/*root the eye in the center of the img plate*/
-	n_HexBase::root(m_seye->rootPlate, m_imgHexedPlate, m_hexImg->getCenterHexIndex());
+	n_HexBase::root(m_seye->rootPlate, m_imgHexedPlate, m_Eye->getRootCenterIndex(), m_hexImg->getCenterIndex());
 
 	m_imgDim = imgDim;
 	m_numLunaXs = m_Eye->getNLinkedBaseOs();
@@ -68,6 +103,69 @@ unsigned char TrainEye::init(
 	m_numBakOut = (m_numTotSmears * m_N_imgs) * m_N_imgs;
 	return genKeyOutFile();
 }
+void TrainEye::release() {
+	if (m_Eye != NULL) {
+		m_Eye->despawn(m_seye);
+	}
+	if (m_seye != NULL) {
+		delete m_seye;
+		m_seye = NULL;
+	}
+	if (m_hexImg != NULL) {
+		m_hexImg->despawn(m_imgHexedPlate);
+	}
+	if (m_imgHexedPlate != NULL) {
+		delete m_imgHexedPlate;
+		m_imgHexedPlate = NULL;
+	}
+	if (m_Eye != NULL) {
+		m_Eye->release();
+		delete m_Eye;
+		m_Eye = NULL;
+	}
+	if (m_hexImg != NULL) {
+		m_hexImg->release();
+		delete m_hexImg;
+		m_hexImg = NULL;
+	}
+	if (m_eyeBaseImg != NULL) {
+		m_eyeBaseImg->release();
+		delete m_eyeBaseImg;
+		m_eyeBaseImg = NULL;
+	}
+	if (m_Imgs != NULL) {
+		for (int i = 0; i < m_N_imgs; i++) {
+			if (m_Imgs[i] != NULL) {
+				m_Imgs[i]->release();
+				delete m_Imgs[i];
+				m_Imgs[i] = NULL;
+			}
+		}
+		delete[] m_Imgs;
+		m_Imgs = NULL;
+	}
+	m_N_imgs = 0;
+	if (m_tgaImg != NULL) {
+		m_tgaImg->Release();
+		delete m_tgaImg;
+		m_tgaImg = NULL;
+	}
+	if (m_parseTxt_Key != NULL) {
+		m_parseTxt_Key->release();
+		delete m_parseTxt_Key;
+		m_parseTxt_Key = NULL;
+	}
+	if (m_parseTxt_Sig != NULL) {
+		m_parseTxt_Sig->release();
+		delete m_parseTxt_Sig;
+		m_parseTxt_Sig = NULL;
+	}
+	if (m_parseTxt_Bak != NULL) {
+		m_parseTxt_Bak->release();
+		delete m_parseTxt_Bak;
+		m_parseTxt_Bak = NULL;
+	}
+}
 
 unsigned char TrainEye::run() {
 	if (Err(readInSourceImgs())) {
@@ -87,11 +185,11 @@ unsigned char TrainEye::genKeyOutFile() {
 	keyOut[0] = new s_datLine(2);
 	keyOut[1] = new s_datLine(2);
 	keyOut[0]->n = 2;
-	keyOut[0]->v[0] = numBaseOs_singleNode;
-	keyOut[0]->v[1] = m_numLunaXs;
+	keyOut[0]->v[0] = (float)numBaseOs_singleNode;
+	keyOut[0]->v[1] = (float)m_numLunaXs;
 	keyOut[1]->n = 2;
-	keyOut[1]->v[0] = m_numSigOut;
-	keyOut[1]->v[1] = m_numBakOut;
+	keyOut[1]->v[0] = (float)m_numSigOut;
+	keyOut[1]->v[1] = (float)m_numBakOut;
 	unsigned char err = m_parseTxt_Key->writeCSV(keyOut, 2);
 	delete keyOut[1];
 	delete keyOut[0];

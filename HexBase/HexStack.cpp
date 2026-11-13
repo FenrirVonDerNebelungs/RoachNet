@@ -111,9 +111,10 @@ int HexStack::getNumEdgeHexes(int i_level) {
 	* ((1*2+1)*2 +1)*2 +1   = 2^3 + 2^2 + 2^1 + 1		i_level=3
 	*/
 	int numSpanHexes = (int)roundf(Math::powerXseries(2, i_level));
-	int numEdgeHexes = 1;
+	int numEdgeHexes = 0;
 	if (numSpanHexes > 1) {
-		int numTriInteriorSegHexes = (numSpanHexes - 3) / 2;/*the number of interior hexes along a side of the triangle not including the ends*/
+		int numTriInteriorSegHexes = (numSpanHexes - 3) / 2;/*the number of interior hexes along a side of the triangle not including the ends
+															numspanhexes/2 +1/2 - 2 = (numspanhexes+1)/2 - 4/2   */
 		numEdgeHexes = 6 * numTriInteriorSegHexes + 6;/*6 sides of the triangle plus 6 corner hexes*/
 	}
 	return numEdgeHexes;
@@ -123,8 +124,8 @@ float HexStack::getNumHexesLongDim(int N_level) {
 	if (N_level < 0 || N_level >= m_N_levels)
 		Nlev = m_N_levels - 1;
 	/* 1+x+x^2 +.. = (1-x^(n+1))/(1-x) */
-	float sideEx = 0.5f * (Math::powerXseries(0.5f, Nlev));/*(1/2) * (1+(1/2)+(1/2)^2+..(1/2)^N_level) */
-	return 2.0f*sideEx;
+	float numSpanHexes = roundf(Math::powerXseries(2, Nlev));
+	return numSpanHexes;
 }
 unsigned char HexStack::genNumHexesPerLevel() {
 	long N_hex = 0;
@@ -150,10 +151,9 @@ unsigned char HexStack::initStack(s_HexStack* neye) {
 		neye->lev[neye->N] = new s_HexPlate;
 		if (neye->lev[neye->N] == NULL)
 			return ECODE_FAIL;
-		if (Err(neye->lev[neye->N]->init(N_hex_thisLevel)))/*this creates the s_Hex nodes and initializes them in the plate*/
+		if (Err(neye->lev[neye->N]->init(N_hex_thisLevel, NULL, R_lev)))/*this creates the s_Hex nodes and initializes them in the plate*/
 			return ECODE_FAIL;
-		neye->lev[neye->N]->initRs(R_lev);
-		float levelDim = sizeOfLevel(i);/*N of level starts at 0*/
+		float levelDim = sizeOfLevel(R_lev, i);/*N of level starts at 0*/
 		neye->lev[neye->N]->height = (long)ceilf(levelDim);
 		neye->lev[neye->N]->width = (long)ceilf(levelDim);
 		(neye->N)++;
@@ -183,54 +183,29 @@ void HexStack::releaseStack(s_HexStack* neye) {
 	}
 }
 long HexStack::numHexInLevel(long N_prev, int N_index) {
-	/*for each level
-	* for each previous level hex n_prev there will be 1 full hex and 6 half hexes or 4 hexes generated for the next level
-	* this gives n_prev*4 for the fully overlapped new hexes
-	* for each edge hex there will be half a new hex or 1/2 * n_new_edge_hexes
-	* n_new_edge_hexes equals the number of hexes from the middle to the edge excluding the middle hex (since 2 half hexes contribute to each side and the number of hexes in a side is the same as the number of hexes including the middle to a edge point)
-	* each edge hex contributes 2 hexes to this number (1 hex and 2 half hexes) except the end hex which contributes 1/2 hex and the middle hex also contributes 1/2 hex although it is not counted
-	* this leads to n_prev_edge_to_point hexes contributing 2*n_prev_edge_to_point + 1
-	*
-	* so if there were n_l0 hexes and n_l0_point_to_edge hexes there will be
-	* n_l1_internal hexes = n_l0*4
-	* and n_l1_side hexes = 2*n_l0_point_to_edge - 1
-	* where n_l1_side hexes = n_l1_point_to_edge - 1
-	* n_l1_point_to_edge = 2* n_l0_point_to_edge
-	*
-	* n_l1 = n_l1_internal + 6*n_l1_side/2
-	* n_l1 = 4*n_l0 + 6*(2*(n_l0_point_to_edge - 1))/2
-	*
-	* l_point_to_edge = 1, 2, 4, 8 = 2^{N-1} where N is the level ( and N-1 is the index of level)
-	*
-	* n_level_{N} = 4*n_level_{N-1} + 3*(2^{N-1}-1):  {N-1}= index
-	*
-	******* this function is passed the index not the level*******
-	*/
+
 	int N_level = N_index + 1;
 	if (N_level == 1)
 		return 1L;
 
 	int N_prev_level = N_index;
-	/*the total number of hexes along a side, including the end hexes*/
-	float numFullSide = floorf(Math::power(2.f, N_prev_level));
-
-	/*since each of the ends only contribute half a hex, remove the equivalent of one end */
-	float numSide = numFullSide - 1.f;
-	/* the number of no overlap per side is 6 half hexes per numSide
-	which is the equivalent if 3 full hexes * numSide being added around the edge of the new level*/
-	float num_non_overlap = 3.f * numSide;
+	/*total number of hexes on full circumference*/
+	float num_edgeHexes = (float)getNumEdgeHexes(N_index-1);
+	/*number of half hexes per edge hex is 2, so 1 full hex outside per edge hex  + 6 half hexes at corners*/
+	float num_non_overlap = num_edgeHexes + 3.f;
 	/*for each of the previous interior hexes a middle hex and 6 half hexes are added, or 4 new interior hexes are added for each prev hex*/
 	float num_interior = N_prev * 4.f;
 	/* the total number of new hexes spawned is the interior hexes plus the non overlapping edge hexes*/
 	float numLevelHexes = num_interior + num_non_overlap;
 	return (long)floorf(numLevelHexes);
 }
-float HexStack::sizeOfLevel(int N_level) {
-	float sideEx = getNumHexesLongDim(N_level);
-	sideEx /= 2.0f;
-	float mini_side = 0.5f * Math::power(0.5f, N_level);
-	mini_side *= (2.f/sqrt(3.f))*0.5;
-	return m_R * 2.f * sqrtf(sideEx * sideEx + mini_side * mini_side);
+float HexStack::sizeOfLevel(float R_lev, int N_level) {
+
+	float numHexesAccross = getNumHexesLongDim(N_level);
+	const float hex_sideInR = sqrt(3.f) / 2.f * 2.f;
+	float sideEx = (numHexesAccross * hex_sideInR)/2.f;
+	float mini_side = 0.5f;
+	return R_lev * 2.f * sqrtf(sideEx * sideEx + mini_side * mini_side); 
 }
 
 unsigned char HexStack::genEye(s_HexStack* neye) {
@@ -308,6 +283,8 @@ void HexStack::genLowerPattern(s_Node* lev_nds[], float Rs, s_2pt& loc, s_2pt_i 
 	indx is the index of the current center in its level (the lower level which is generating)
 	*/
 	s_Hex* lev_node = (s_Hex*)lev_nds[indx]; /*lev_nds are the nodes for the lower level the one being created*/
+	if (lev_node == NULL)
+		return;
 	lev_node->x = loc.x0;
 	lev_node->y = loc.x1;
 	lev_node->thislink = indx;
@@ -318,20 +295,22 @@ void HexStack::genLowerPattern(s_Node* lev_nds[], float Rs, s_2pt& loc, s_2pt_i 
 		if (nebLev_i >= 0) {
 			/*this neighbor is alredy generated*/
 			s_Hex* neb_lev_node = (s_Hex*)lev_nds[nebLev_i];
-			if (neb_lev_node->web[oplink] == NULL)
+			if (neb_lev_node != NULL) {
 				neb_lev_node->web[oplink] = (s_Node*)lev_node;
-			if (lev_node->web[i] == NULL)
 				lev_node->web[i] = (s_Node*)neb_lev_node;
+			}
 		}
 		else {/*only fill if these have not previously been filled*/
 			indx++;/*add new hex*/
 			s_Hex* rot_lev_node = (s_Hex*)lev_nds[indx];
-			rot_lev_node->x = m_hexU[i].x0 * Rs + loc.x0;
-			rot_lev_node->y = m_hexU[i].x1 * Rs + loc.x1;
-			rot_lev_node->thislink = indx;
+			if (rot_lev_node != NULL) {
+				rot_lev_node->x = m_hexU[i].x0 * Rs + loc.x0;
+				rot_lev_node->y = m_hexU[i].x1 * Rs + loc.x1;
+				rot_lev_node->thislink = indx;
 
-			rot_lev_node->web[oplink] = (s_Node*)lev_node;
-			lev_node->web[i] = (s_Node*)rot_lev_node;
+				rot_lev_node->web[oplink] = (s_Node*)lev_node;
+				lev_node->web[i] = (s_Node*)rot_lev_node;
+			}
 		}
 	}
 	weaveRound(lev_node);

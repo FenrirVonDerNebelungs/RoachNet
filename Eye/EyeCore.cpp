@@ -7,6 +7,12 @@ s_EyeCore::~s_EyeCore() {
 	;
 }
 
+EyeCore::EyeCore() : m_twistedPlate(NULL), m_luna(NULL), m_genEyeNet(NULL) {
+	;
+}
+EyeCore::~EyeCore() {
+	;
+}
 unsigned char EyeCore::init(TwistedPlate* twistedplate, Luna* luna, EyeNets* genEyeNet) {
 	if (twistedplate == NULL || luna == NULL || genEyeNet == NULL)
 		return ECODE_ABORT;
@@ -15,7 +21,11 @@ unsigned char EyeCore::init(TwistedPlate* twistedplate, Luna* luna, EyeNets* gen
 	m_genEyeNet = genEyeNet;
 	return ECODE_OK;
 }
-
+void EyeCore::release() {
+	m_twistedPlate = NULL;
+	m_luna = NULL;
+	m_genEyeNet = NULL;
+}
 unsigned char EyeCore::spawn(float angRad, s_rtHexPlate* basePlate, s_EyeCore* eyeCore) {
 	if (angRad < 0.f)
 		angRad = 0.f;
@@ -32,7 +42,25 @@ unsigned char EyeCore::spawn(float angRad, s_rtHexPlate* basePlate, s_EyeCore* e
 	eyeCore->nets = new s_EyeNets;
 	return m_genEyeNet->spawn(eyeCore->lunaPlates, eyeCore->nets);
 }
-
+void EyeCore::despawn(s_EyeCore* eyeCore) {
+	if (eyeCore == NULL)
+		return;
+	if (eyeCore->nets != NULL) {
+		m_genEyeNet->despawn(eyeCore->nets);
+		delete eyeCore->nets;
+		eyeCore->nets = NULL;
+	}
+	if (eyeCore->lunaPlates != NULL) {
+		m_luna->despawn(eyeCore->lunaPlates);
+		delete eyeCore->lunaPlates;
+		eyeCore->lunaPlates = NULL;
+	}
+	if (eyeCore->twistedPlate != NULL) {
+		m_twistedPlate->despawn(eyeCore->twistedPlate);
+		delete eyeCore->twistedPlate;
+		eyeCore->twistedPlate = NULL;
+	}
+}
 bool n_EyeCore::run(s_EyeCore* eyeCore) {
 	if (eyeCore == NULL)
 		return false;

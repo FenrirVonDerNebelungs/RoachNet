@@ -29,9 +29,9 @@ public:
 	RenderBase();
 	~RenderBase();
 
-	virtual unsigned char init(HexRect* hexRect, bool rgb_unit_scaled = false, bool do_grid_overlay = true, float grid_line_width = 1.f);
-	virtual unsigned char init(HexStack* hexStack, bool rgb_unit_scaled = false, bool do_grid_overlay = true, float grid_line_width = 1.f);
-	virtual unsigned char init(float r, bool rgb_unit_scaled = false, bool do_grid_overlay = true, float grid_line_width = 1.f);
+	virtual unsigned char init(HexRect* hexRect, bool rgb_unit_scaled = false, bool do_grid_overlay = true, bool use_dv_loc = false, float grid_line_width = 1.f);
+	virtual unsigned char init(HexStack* hexStack, bool rgb_unit_scaled = false, bool do_grid_overlay = true, bool use_dv_loc = false, float grid_line_width = 1.f);
+	virtual unsigned char init(float r, bool rgb_unit_scaled = false, bool do_grid_overlay = true, bool use_dv_loc = false, float grid_line_width = 1.f, s_2pt* U = NULL);
 	unsigned char resetR(float r);
 	void setGridOverlay(bool do_grid_overlay) { m_flag_doGridOverlay = do_grid_overlay; }
 	void setGridLineWidth(float grid_line_width) { m_grid_line_width = grid_line_width; }
@@ -52,6 +52,7 @@ public:
 	inline Img* getHexMask() { return m_hex_mask; }/*returns pointer but does not transfer ownership*/
 	inline Img* getHexGridMask() { return m_hex_grid_mask; }
 protected:
+	bool m_flag_dv_loc;
 	bool m_flag_rgb_unit_scaled;
 	bool m_flag_doGridOverlay;
 	float m_grid_line_width;

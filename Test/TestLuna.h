@@ -2,15 +2,18 @@
 #ifndef TESTLUNA_C_H
 #define TESTLUNA_C_H
 
-#ifndef RENDERBASE_H
-#include "../Render/RenderBase.h"
+#ifndef CTARGAIMAGE_H
+#include "../FileIO/CTargaImage.h"
 #endif
-#ifndef COLOR_H
-#include "../HexedImg/Color.h"
+#ifndef EYE_H
+#include "../Eye/Eye.h"
 #endif
-#ifndef LUNALAYER_H
-#include "../Luna/LunaLayer.h"
+#ifndef RENDERPLATE_H
+#include "../Render/RenderPlate.h"
 #endif
+
+
+const int g_numTestHex = 3;
 
 class TestLuna : public Base {
 
@@ -19,56 +22,24 @@ public:
 	~TestLuna();
 
 	unsigned char init(
-		Img* baseImg,
-		float r,
-		long pix_between_imgs = 20,
-		float luna_hue_ang = 0.37f,
-		int num_eye_lev=4
+		s_Eye* seye,
+		CTargaImage* tgaImgOut
 	);
 	void release();
 
-	unsigned char render(Img* colPlateImg, Img* lunasImg, Img* lunaPlatesImg[]);/*these objects passed should be new, but not init, should be 6 pointers*/
-	unsigned char renderBase(Img* hexedImg);
-	inline Img* getBaseImg() { return m_baseImg; }
 private:
-	long m_pix_between_imgs;
-	s_2pt_i m_eye_center;
-	/*not owned*/
-	Img* m_baseImg;
-
-	/*owned*/
-	RenderBase* m_render;
-	s_2pt m_luna_hue_start;/*first vector in the set of 6 vectors that give the luna hues*/
-	s_rgb_f m_luna_hues[6];
-	/** generators **/
-	/*** generators of data objects ***/
-	HexEye* m_genHexEye;
-	HexEyeImg* m_genHexedImg;
-	Col* m_genColLayer;
-	LunaLayer* m_genLunaLayer;
-
-	/** data objs **/
-	s_HexEye* m_seye;
-	s_ColPlateLayer* m_colPlates;
-	s_HexPlateLayer* m_lunaPlates;
-
-	s_ColWheel m_sCol;
-
-	unsigned char runLunaPlates();
-	unsigned char renderHexLunas(Img* lunImg);
-	unsigned char renderHexedBase(Img* hexedImg);
-	unsigned char renderColPlate(Img* colImg);
-	unsigned char renderLunaPlates(Img* lunPlates[]);/*lunPlates is an arry of new plates not init*/
-
-	/*helper functions*/
-	unsigned char renderLunaPlate(int luna_i, s_HexPlate* lunaPlate, Img* lunaPlateImg);/*luna Plate is new but not init*/
-
-	/*init helper functions*/
-	unsigned char genWhiteColWheel();
-	unsigned char genLunaColHues(float luna_hue_ang);
-
-	/*utility functions*/
-	void setColFromI(const s_rgb_f& hue, float Intensity, float col_rgb[]);
+	s_Eye* m_seye;/*not owned*/
+	s_EyeCore* m_selCore;/*not owned*/
+	s_rtHexPlate* m_selTwistedPlate;/*not owned*/
+	s_HexPlateLayer* m_lunaPlates;/*not owned*/
+	CTargaImage* m_tgaImgOut;/*not owned*/
+	RenderPlate* m_renderPlateLo;/*owned*/
+	RenderPlate* m_renderPlate;/*owned*/
+	int m_test_hex_i[3] = {0, 4, 8};
 	
+	unsigned char genLunaPrints(Img* lunaPrints[]);/*6 prints*/
+	unsigned char genLunaPrint(Img* lunaPrint, int lunaPrint_i);
+	unsigned char genLunaPlates(Img* lunaPlates[]);/*6 plates*/
+	unsigned char writeImages(Img* lunaPrints[], Img* lunaPlates[]);
 };
 #endif

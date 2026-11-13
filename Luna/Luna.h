@@ -14,7 +14,7 @@ public:
 	Luna();
 	~Luna();
 
-	unsigned char init(ExHex* exHex);
+	unsigned char init(HexStack* hexStack, ExHex* exHex);
 	void release();
 
 	unsigned char spawn(/*const*/s_HexPlate* basePlate, s_HexPlateLayer* lunPlates);
@@ -25,8 +25,8 @@ public:
 
 private:
 	/*not owned*/ 
+	HexStack* m_hexStack;/*was used to generate the base plate, assume has already been initialized*/
 	ExHex* m_exHex;/*was used to generate the extended plates, assume has already been initialized*/
-
 	s_Node m_lunas[LUNA_NUM_LUNAS];/*these are the 6 rotated lunas, the 7th is white and the 8th is black*/
 
 	unsigned char spawnPlate( /*const*/s_HexPlate* basePlate, int lunRot, s_HexPlate* lunPlate);

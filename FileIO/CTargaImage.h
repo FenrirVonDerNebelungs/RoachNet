@@ -64,7 +64,13 @@ public:
 	CTargaImage();
 	~CTargaImage();
 
-	unsigned char Init();
+	unsigned char Init(
+		unsigned char* pImageData = NULL,
+		unsigned short width=0.f,
+		unsigned short height = 0.f,
+		bool           IsBGR = false,
+		unsigned char imageDataFormat = IMAGE_RGBA
+	);
 	void Release();
 	unsigned char Open(
 		unsigned char* pImageData,

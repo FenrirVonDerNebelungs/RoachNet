@@ -55,11 +55,39 @@ CTargaImage::~CTargaImage()
 {
 	;
 }
-unsigned char CTargaImage::Init()
+unsigned char CTargaImage::Init(
+	unsigned char* pImageData,
+	unsigned short width,
+	unsigned short height,
+	bool           IsBGR,
+	unsigned char imageDataFormat
+)
 {
 	if (!IsStateNew())
 		return ECODE_FAIL;
 	SetStateInitialized();
+	m_xOrigin = 0;
+	m_yOrigin = 0;
+	if (imageDataFormat == IMAGE_RGB) {
+		m_colorMode = 3;
+		m_colorDepth = 24;
+	}
+	else if (imageDataFormat == IMAGE_RGBA){
+		m_colorMode = 4;
+		m_colorDepth = 32;
+	}
+	else
+		return ECODE_ABORT;
+	m_imageDataType = IMAGE_DATA_UNSIGNED_BYTE;
+	m_pImageData = pImageData;
+	m_ImageDataIsOwned = false;
+	m_width = width;
+	m_height = height;
+	m_IsBGR = IsBGR;
+	m_imageDataFormat = imageDataFormat;
+	if (m_pImageData == NULL || width == 0.f || height == 0.f)
+		return ECODE_ABORT;
+	m_imageSize = m_width * m_height * m_colorMode;
 	return ECODE_OK;
 }
 void CTargaImage::Release()
@@ -245,8 +273,8 @@ bool CTargaImage::Load(const char* filename) {
 	return (RetOk(Open(filename)));
 }
 unsigned char CTargaImage::Write(const char* filename, unsigned char bpp) {
-	if (!IsStateOpen())
-		return ECODE_ABORT;
+	//if (!IsStateOpen())
+	//	return ECODE_ABORT;
 	const char* cur_filename = filename;
 	if ((cur_filename == NULL) && (m_filename_len > 0))
 		cur_filename = m_filename;
