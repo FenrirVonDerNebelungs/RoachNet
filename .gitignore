@@ -1,4 +1,11 @@
-.vs/
+#ignore data dir
 Dat/
+Train/Dat/
+
+#ignore compiler stuff
+.vs/
 RoachNet/
 RoachNet.vc*
+RoachNet.sln
+
+.gitignore.txt
